@@ -23,7 +23,7 @@
 | NordVPN | AUR | `nordvpn-bin` |
 | Chrome | bootstrap | `google-chrome` |
 
-Chrome is installed by **bootstrap**. Docker Desktop provides compose/buildx (do not install those repo packages separately).
+Chrome is installed by **bootstrap**. Docker Desktop provides compose/buildx (do not install those repo packages separately). The engine (`docker.service`) starts at boot for CLI; the Docker Desktop GUI is **not** autostarted (`systemctl --user disable docker-desktop`). Open it from the app menu when you need it.
 
 ## Webapps (Chrome `--app`)
 

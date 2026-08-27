@@ -96,6 +96,12 @@ _apps_install() {
     ao_log "apps: AUR packages already present"
   fi
 
+  # Package preset enables the GUI at login; keep CLI docker.service only.
+  if systemctl --user cat docker-desktop.service &>/dev/null; then
+    systemctl --user disable --now docker-desktop.service 2>/dev/null || true
+    ao_log "apps: docker-desktop GUI will not autostart (launch from app menu)"
+  fi
+
   # NordVPN service after AUR install
   if pacman -Q nordvpn-bin &>/dev/null; then
     ao_log "apps: enable nordvpnd (pkexec — huella)"
