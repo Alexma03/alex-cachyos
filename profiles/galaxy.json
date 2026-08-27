@@ -1,8 +1,9 @@
 {
   "name": "galaxy",
-  "description": "Samsung Galaxy Book (CachyOS/COSMIC) — Egis 1c7a:05a1 fingerprint + PAM.",
+  "description": "Samsung Galaxy Book (CachyOS/COSMIC) — fingerprint + mise/node/pnpm.",
   "modules": {
-    "fingerprint": true
+    "fingerprint": true,
+    "devtools": true
   },
   "overlay_profile": "galaxy"
 }

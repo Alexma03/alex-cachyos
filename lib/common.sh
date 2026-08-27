@@ -9,7 +9,17 @@ ao_has_cmd() { command -v "$1" >/dev/null 2>&1; }
 
 ao_need_root() {
   if [[ ${EUID:-$(id -u)} -ne 0 ]]; then
-    ao_die "this step needs root (re-run with sudo, or from apply which elevates)"
+    ao_die "this step needs root (re-run with sudo/pkexec, or from apply which elevates)"
+  fi
+}
+
+# Elevate via pkexec so polkit/fingerprint GUI can prompt.
+ao_root() {
+  if [[ ${EUID:-$(id -u)} -eq 0 ]]; then
+    "$@"
+  else
+    ao_has_cmd pkexec || ao_die "pkexec required (polkit)"
+    pkexec "$@"
   fi
 }
 
@@ -34,6 +44,22 @@ ao_restore_file() {
     # Only remove files we created that no package owns? Safer: leave and warn.
     ao_warn "no backup for $dst — left in place"
   fi
+}
+
+# User-home install (same backup scheme; no root).
+ao_install_user_file() {
+  local src=$1 dst=$2
+  [[ -f $src ]] || ao_die "missing template: $src"
+  mkdir -p "$(dirname "$dst")"
+  if [[ -f $dst && ! -f ${dst}.bak.alex-cachyos ]]; then
+    cp -a "$dst" "${dst}.bak.alex-cachyos"
+  fi
+  install -D -m 644 "$src" "$dst"
+  ao_log "installed $dst"
+}
+
+ao_restore_user_file() {
+  ao_restore_file "$1"
 }
 
 ao_should_run_module() {

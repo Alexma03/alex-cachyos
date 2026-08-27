@@ -1,0 +1,8 @@
+# Managed by alex-cachyos/devtools.
+# pacman nodejs stays for cursor-bin — do not remove it.
+# Development node/npm/pnpm come from mise (shims win over /usr/bin).
+
+[tools]
+node = "lts"
+npm = "latest"
+pnpm = "latest"

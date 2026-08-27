@@ -32,15 +32,16 @@ cd alex-cachyos
 
 | Perfil | Qué hace |
 |--------|----------|
-| `galaxy` | Galaxy Book — lector Egis `1c7a:05a1` (SDCP) + PAM/COSMIC |
+| `galaxy` | Galaxy Book — Egis fingerprint + mise/node/pnpm |
 
 ## Módulos
 
-`fingerprint`
+`fingerprint` · `devtools`
 
 ```bash
 ./apply --profile galaxy                      # instalar
 ./apply --profile galaxy --only fingerprint   # solo huella
+./apply --profile galaxy --only devtools      # mise + pnpm/npm
 ./apply --profile galaxy --only fingerprint --remove
 ./apply --profile galaxy --dry-run
 ```
@@ -63,12 +64,20 @@ sudo -k && sudo true
 
 Ver [docs/fingerprint.md](docs/fingerprint.md).
 
+## Devtools
+
+`mise` + Node LTS + pnpm/npm con defaults anti supply-chain. Dotfiles de usuario
+(`~/.config/mise`, `~/.config/pnpm`, `~/.npmrc`), no `/etc`.
+
+Ver [docs/devtools.md](docs/devtools.md).
+
 ## Layout
 
 ```
 apply
 lib/common.sh
 modules/
+templates/devtools/
 profiles/
 packaging/libfprint-egismoc-sdcp-git/
 overlays/galaxy/etc/{pam.d,greetd}/

@@ -1,0 +1,18 @@
+; Supply-chain defaults (user-wide). Prefer allowScripts over ignore-scripts:
+; ignore-scripts=true would defeat the allowlist and hide what needs review.
+
+; Cooldown: only install versions published ≥3 days ago (aligns with pnpm minimumReleaseAge).
+min-release-age=3
+
+; Fail when deps have install scripts that are neither approved nor denied.
+strict-allow-scripts=true
+
+; Exotic sources: block transitive git; no https tarball deps.
+; root = intentional direct git deps only (aligns with pnpm blockExoticSubdeps).
+allow-git=root
+allow-remote=none
+
+; Keep lockfiles + audit; cut donation noise.
+package-lock=true
+audit=true
+fund=false

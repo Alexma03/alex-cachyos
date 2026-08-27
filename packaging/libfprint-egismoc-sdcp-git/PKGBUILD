@@ -36,8 +36,6 @@ provides=(libfprint libfprint-2.so)
 conflicts=(libfprint)
 replaces=(libfprint)
 groups=(fprint)
-# Metainfo URL check fails offline / without network in chroot.
-options=(!check)
 
 # Pin PR #5 tip so rebuilds stay reproducible until upstream merges it.
 _commit=8749008832ee1f313bfca4d3c04340df84b2bc27

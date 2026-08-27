@@ -13,7 +13,7 @@ AO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
 source "$AO_ROOT/lib/common.sh"
 
-MODULE_ORDER=(fingerprint)
+MODULE_ORDER=(fingerprint devtools)
 
 AO_PROFILE=galaxy
 AO_DRY_RUN=0
@@ -42,11 +42,12 @@ Options:
   -h, --help         Show this help
 
 Profiles:
-  galaxy             Galaxy Book — fingerprint (Egis 1c7a:05a1) + PAM
+  galaxy             Galaxy Book — fingerprint + mise/node/pnpm
 
 Examples:
   ./apply --profile galaxy
   ./apply --profile galaxy --only fingerprint
+  ./apply --profile galaxy --only devtools
   ./apply --profile galaxy --only fingerprint --remove
 EOF
 }
@@ -99,10 +100,13 @@ while [[ $# -gt 0 ]]; do
 done
 
 AO_MOD_fingerprint=0
+AO_MOD_devtools=0
 load_profile "$AO_PROFILE"
 
 # shellcheck source=modules/fingerprint.sh
 source "$AO_ROOT/modules/fingerprint.sh"
+# shellcheck source=modules/devtools.sh
+source "$AO_ROOT/modules/devtools.sh"
 
 ao_log "profile=$AO_PROFILE dry_run=$AO_DRY_RUN remove=$AO_REMOVE only=${AO_ONLY:-<profile>} overlay=$AO_OVERLAY_PROFILE"
 
