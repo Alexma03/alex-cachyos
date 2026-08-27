@@ -61,6 +61,8 @@ _fingerprint_install() {
     pacman -U --noconfirm '$pkgfile'
     pacman -Q fprintd &>/dev/null || pacman -S --needed --noconfirm fprintd usbutils
 
+    # cosmic-greeter PAM must match login (system-local-login), not system-auth,
+    # or cosmic-comp panics with RuntimeDirNotSet at the login screen.
     for f in sudo polkit-1 cosmic-greeter system-local-login greetd su su-l; do
       [[ -f '$overlay/pam.d/'\$f ]] || continue
       ao_install_file '$overlay/pam.d/'\$f '/etc/pam.d/'\$f

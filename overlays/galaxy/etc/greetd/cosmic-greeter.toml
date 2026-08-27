@@ -2,7 +2,9 @@
 vt = "1"
 
 [general]
-service = "cosmic-greeter"
+# Must stay "login". "cosmic-greeter" skips pam_systemd → cosmic-comp
+# panics with RuntimeDirNotSet and the login screen never appears.
+service = "login"
 
 [default_session]
 command = "cosmic-greeter-start"
