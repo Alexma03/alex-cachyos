@@ -1,0 +1,63 @@
+# Remove if installed. Skipped automatically when missing.
+# Browsers: CachyOS defaults to Firefox; chromium was an intermediate step.
+firefox
+chromium
+# Editors / zsh candy that pulls vim — we want nano + Cursor only.
+vim
+cachyos-zsh-config
+micro
+cachyos-micro-settings
+# UI / branding / players
+vlc-plugins-all
+alacritty
+glances
+meld
+pavucontrol
+cachyos-hello
+cachyos-packageinstaller
+cachyos-wallpapers
+notification-daemon
+# Boot splash
+plymouth
+cachyos-plymouth-common
+# Network extras
+netctl
+iwd
+modemmanager
+networkmanager-openvpn
+xl2tpd
+nfs-utils
+# Disk / btrfs GUI
+btrfs-assistant
+# Second kernel
+linux-cachyos-lts
+linux-cachyos-lts-headers
+# Fonts (keep Open Sans / Liberation / Noto base)
+noto-fonts-cjk
+cantarell-fonts
+ttf-dejavu
+ttf-bitstream-vera
+# Codecs / misc
+gst-plugins-bad
+gst-plugins-ugly
+libdvdcss
+gst-libav
+os-prober
+s-nail
+realtime-privileges
+# Dev-irrelevant tools
+duf
+reflector
+mesa-utils
+fsarchiver
+lsscsi
+hdparm
+usb_modeswitch
+dnsmasq
+mtools
+# Rare filesystems (skip at runtime if deps block)
+jfsutils
+nilfs-utils
+f2fs-tools
+xfsprogs
+dmraid

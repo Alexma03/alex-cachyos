@@ -32,19 +32,28 @@ cd alex-cachyos
 
 | Perfil | Qué hace |
 |--------|----------|
-| `galaxy` | Galaxy Book — Egis fingerprint + mise/node/pnpm |
+| `galaxy` | Galaxy Book — bootstrap + Egis fingerprint + mise/node/pnpm |
 
 ## Módulos
 
-`fingerprint` · `devtools`
+`bootstrap` · `fingerprint` · `devtools`
 
 ```bash
 ./apply --profile galaxy                      # instalar
+./apply --profile galaxy --only bootstrap     # limpieza + Chrome/paru/zsh
 ./apply --profile galaxy --only fingerprint   # solo huella
 ./apply --profile galaxy --only devtools      # mise + pnpm/npm
 ./apply --profile galaxy --only fingerprint --remove
 ./apply --profile galaxy --dry-run
 ```
+
+## Bootstrap
+
+Limpieza inicial de CachyOS minimal + Chrome (AUR), paru, cosmic-store, zsh pelado
+(para Cursor). Quita Firefox stock y vim/`cachyos-zsh-config`. Login sigue en fish;
+editor de terminal: nano.
+
+Ver [docs/bootstrap.md](docs/bootstrap.md).
 
 ## Fingerprint (galaxy)
 
@@ -77,6 +86,7 @@ Ver [docs/devtools.md](docs/devtools.md).
 apply
 lib/common.sh
 modules/
+templates/bootstrap/
 templates/devtools/
 profiles/
 packaging/libfprint-egismoc-sdcp-git/

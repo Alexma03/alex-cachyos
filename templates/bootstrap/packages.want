@@ -1,0 +1,7 @@
+# Wanted on galaxy after bootstrap (pacman repos).
+# google-chrome comes from AUR via paru (handled in module).
+paru
+cosmic-store
+flatpak
+zsh
+nano
