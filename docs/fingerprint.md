@@ -24,7 +24,8 @@ Eso:
 1. Construye `libfprint-egismoc-sdcp-git` (PR #5 + patch claim-on-close)
 2. Lo instala con `pacman -U` (`provides`/`conflicts` stock `libfprint`)
 3. Aplica overlays PAM (sudo/polkit/login). greetd se queda en `service = "login"`
-   para que cosmic-comp tenga `XDG_RUNTIME_DIR` (si no, la pantalla de login no arranca).
+   para que cosmic-greeter tenga `XDG_RUNTIME_DIR` (si no, la pantalla de login no arranca).
+   La sesión de usuario por defecto la pone el módulo `desktop` (Niri).
 
 ## Enroll
 

@@ -19,11 +19,14 @@
 | Tailscale | repos | `tailscale` |
 | Docker engine | repos | `docker` |
 | Docker Desktop | AUR | `docker-desktop` |
-| Spokenly | AUR | `spokenly` |
+| hyprwhspr | AUR | `hyprwhspr` |
+| CodexBar CLI | AUR | `codexbar-cli` |
 | NordVPN | AUR | `nordvpn-bin` |
 | Chrome | bootstrap | `google-chrome` |
 
 Chrome is installed by **bootstrap**. Docker Desktop provides compose/buildx (do not install those repo packages separately). The engine (`docker.service`) starts at boot for CLI; the Docker Desktop GUI is **not** autostarted (`systemctl --user disable docker-desktop`). Open it from the app menu when you need it.
+
+`hyprwhspr` is local speech-to-text (replaces Spokenly). `codexbar-cli` feeds the Noctalia CodexBar plugin. The **desktop** module enables those plugins on the bar.
 
 ## Webapps (Chrome `--app`)
 

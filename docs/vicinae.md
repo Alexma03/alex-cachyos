@@ -1,4 +1,7 @@
-# Vicinae — default launcher + clipboard on COSMIC
+# Vicinae — default launcher + clipboard
+
+Works in Niri (this profile's desktop) and still patches COSMIC shortcuts if you
+log into COSMIC later.
 
 ## Install
 

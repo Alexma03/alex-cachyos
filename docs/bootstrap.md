@@ -1,4 +1,4 @@
-# Bootstrap — first steps on a minimal CachyOS + COSMIC install
+# Bootstrap — first steps on a minimal CachyOS install (ISO may ship COSMIC)
 
 ## Install
 

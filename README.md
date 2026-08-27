@@ -3,8 +3,9 @@
 Configuración reproducible de **CachyOS** para las máquinas de Alex.
 
 Parte de una instalación limpia de CachyOS y aplica overlays del sistema
-(paquetes locales, PAM, greetd, etc.) por **perfil de máquina**. No toca
-`/usr/share/omarchy/` ni asume Omarchy.
+(paquetes locales, PAM, greetd, etc.) por **perfil de máquina**. Escritorio
+por defecto: **Niri + Noctalia**. COSMIC queda instalado como opción en el
+greeter. No toca `/usr/share/omarchy/` ni asume Omarchy.
 
 ```bash
 git clone https://github.com/Alexma03/alex-cachyos.git
@@ -32,11 +33,11 @@ cd alex-cachyos
 
 | Perfil | Qué hace |
 |--------|----------|
-| `galaxy` | Galaxy Book — bootstrap + fingerprint + mise + apps + vicinae |
+| `galaxy` | Galaxy Book — bootstrap + fingerprint + mise + apps + vicinae + niri |
 
 ## Módulos
 
-`bootstrap` · `fingerprint` · `devtools` · `apps` · `vicinae`
+`bootstrap` · `fingerprint` · `devtools` · `apps` · `vicinae` · `desktop`
 
 ```bash
 ./apply --profile galaxy                      # instalar
@@ -45,6 +46,7 @@ cd alex-cachyos
 ./apply --profile galaxy --only devtools      # mise + pnpm/npm
 ./apply --profile galaxy --only apps          # programas + webapps Chrome
 ./apply --profile galaxy --only vicinae       # launcher + clipboard
+./apply --profile galaxy --only desktop       # niri + noctalia (sesión por defecto)
 ./apply --profile galaxy --only fingerprint --remove
 ./apply --profile galaxy --dry-run
 ```
@@ -53,7 +55,8 @@ cd alex-cachyos
 
 Limpieza inicial de CachyOS minimal + Chrome (AUR), paru, cosmic-store, zsh pelado
 (para Cursor). Quita Firefox stock y vim/`cachyos-zsh-config`. Login sigue en fish;
-editor de terminal: nano.
+editor de terminal: nano. El ISO puede traer COSMIC; este repo deja **Niri** como
+sesión por defecto.
 
 Ver [docs/bootstrap.md](docs/bootstrap.md).
 
@@ -91,10 +94,18 @@ Ver [docs/apps.md](docs/apps.md).
 
 ## Vicinae
 
-Launcher + clipboard por defecto (sustituye la UX del Cosmic launcher).
-**Super+Space** abre Vicinae; **Super+V** el historial de clipboard.
+Launcher + clipboard. En Niri: **Super+Space**. El módulo también deja atajos
+equivalentes por si entras en COSMIC.
 
 Ver [docs/vicinae.md](docs/vicinae.md).
+
+## Desktop (Niri)
+
+Sesión por defecto: Niri + Noctalia. Config actual del Galaxy (monitores, bordes,
+foco al cursor, plugins CodexBar + hyprwhspr). Login sigue en cosmic-greeter
+(huella).
+
+Ver [docs/desktop.md](docs/desktop.md).
 
 ## Layout
 
@@ -108,6 +119,10 @@ templates/bootstrap/
 templates/devtools/
 templates/apps/
 templates/vicinae/
+templates/niri/
+templates/noctalia/
+templates/hyprwhspr/
+templates/desktop/
 profiles/
 packaging/libfprint-egismoc-sdcp-git/
 overlays/galaxy/etc/{pam.d,greetd}/

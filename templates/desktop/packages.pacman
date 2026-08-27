@@ -1,0 +1,5 @@
+# Wayland compositor + shell. Do not pull cachyos-niri-noctalia
+# (xdg-desktop-portal-gnome / nautilus, Conflicts with desktop settings).
+niri
+noctalia
+xwayland-satellite
