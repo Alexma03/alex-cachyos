@@ -1,0 +1,84 @@
+# Maintainer: Alex <Alexma03>
+# Based on AUR libfprint-egismoc-sdcp-git by mandalb
+# Upstream SDCP fork: https://github.com/TenSeventy7/libfprint-egismoc-sdcp
+# Reliability base: PR #5 (1c7a:0583) + local claim-on-close fix for 1c7a:05a1
+#
+# Replaces stock libfprint so EgisTec Match-on-Chip sensors can enroll and
+# verify via SDCP. Provides/conflicts stock libfprint so pacman owns the files.
+
+pkgname=libfprint-egismoc-sdcp-git
+pkgver=0
+pkgrel=1
+pkgdesc="libfprint with EgisTec SDCP (PR#5 + claim-on-close) for Galaxy Book 1c7a:05a1"
+url="https://github.com/Alexma03/alex-cachyos"
+arch=(x86_64)
+license=(LGPL-2.1-or-later)
+depends=(
+  gcc-libs
+  glib2
+  glibc
+  libgudev
+  libgusb
+  openssl
+  pixman
+)
+makedepends=(
+  git
+  glib2-devel
+  gobject-introspection
+  meson
+)
+checkdepends=(
+  cairo
+  umockdev
+)
+provides=(libfprint libfprint-2.so)
+conflicts=(libfprint)
+replaces=(libfprint)
+groups=(fprint)
+# Metainfo URL check fails offline / without network in chroot.
+options=(!check)
+
+# Pin PR #5 tip so rebuilds stay reproducible until upstream merges it.
+_commit=8749008832ee1f313bfca4d3c04340df84b2bc27
+source=(
+  "libfprint-egismoc-sdcp::git+https://github.com/TenSeventy7/libfprint-egismoc-sdcp.git#commit=${_commit}"
+  "0001-egismoc-drop-sdcp-claim-on-close.patch"
+)
+sha256sums=(
+  'SKIP'
+  'dd248cb9225857385f32ce36da887cb039d5ec7bffd54f412a790e898349d03d'
+)
+
+pkgver() {
+  cd libfprint-egismoc-sdcp
+  printf "r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+}
+
+prepare() {
+  cd libfprint-egismoc-sdcp
+
+  # OpenSSL must be linked for egismoc (SDCP uses EVP_MAC_*).
+  if ! grep -q "'egismoc' : \[ 'openssl' \]" meson.build; then
+    sed -i "/'uru4000' : \[ 'openssl' \],/a\\    'egismoc' : [ 'openssl' ]," meson.build
+  fi
+
+  patch -Np1 -i "${srcdir}/0001-egismoc-drop-sdcp-claim-on-close.patch"
+}
+
+build() {
+  local meson_options=(
+    -D drivers=egismoc
+    -D doc=false
+    -D gtk-examples=false
+    -D installed-tests=false
+  )
+  arch-meson libfprint-egismoc-sdcp build "${meson_options[@]}"
+  meson compile -C build
+}
+
+package() {
+  meson install -C build --destdir "$pkgdir"
+}
+
+# vim:set sw=2 sts=-1 et:

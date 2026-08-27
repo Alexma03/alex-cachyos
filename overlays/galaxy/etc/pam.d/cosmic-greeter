@@ -1,0 +1,8 @@
+#%PAM-1.0
+auth      sufficient pam_fprintd.so timeout=-1 max-tries=3
+auth      requisite  pam_nologin.so
+auth      required   pam_succeed_if.so user != root quiet_success
+auth      include    system-auth
+account   include    system-auth
+password  include    system-auth
+session   include    system-auth

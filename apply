@@ -1,0 +1,125 @@
+#!/usr/bin/env bash
+# alex-cachyos — reproducible CachyOS system overlay for Alex's machines.
+#
+# Usage:
+#   ./apply --profile galaxy
+#   ./apply --profile galaxy --only fingerprint
+#   ./apply --profile galaxy --only fingerprint --remove
+#   ./apply --profile galaxy --dry-run
+
+set -euo pipefail
+
+AO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/common.sh
+source "$AO_ROOT/lib/common.sh"
+
+MODULE_ORDER=(fingerprint)
+
+AO_PROFILE=galaxy
+AO_DRY_RUN=0
+AO_REMOVE=0
+AO_ONLY=
+AO_WITH=()
+AO_WITHOUT=()
+AO_OVERLAY_PROFILE=
+AO_THEME=
+
+usage() {
+  cat <<'EOF'
+alex-cachyos apply — personal CachyOS system configuration
+
+Usage:
+  ./apply [options]
+
+Options:
+  --profile NAME     Profile to apply (default: galaxy)
+  --only m1,m2       Run only these modules
+  --with MODULE      Force-enable a module
+  --without MODULE   Force-disable a module
+  --remove           Run modules in remove mode (where supported)
+  --dry-run          Print actions without changing the system
+  --list             List profiles and modules
+  -h, --help         Show this help
+
+Profiles:
+  galaxy             Galaxy Book — fingerprint (Egis 1c7a:05a1) + PAM
+
+Examples:
+  ./apply --profile galaxy
+  ./apply --profile galaxy --only fingerprint
+  ./apply --profile galaxy --only fingerprint --remove
+EOF
+}
+
+list_all() {
+  echo "Profiles:"
+  local f
+  for f in "$AO_ROOT"/profiles/*.json; do
+    python3 - "$f" <<'PY'
+import json, sys
+p = json.load(open(sys.argv[1]))
+print(f"  {p['name']:16}  {p.get('description','')}")
+PY
+  done
+  echo
+  echo "Modules: ${MODULE_ORDER[*]}"
+}
+
+load_profile() {
+  local name=$1
+  local file="$AO_ROOT/profiles/${name}.json"
+  [[ -f $file ]] || ao_die "unknown profile: $name (see --list)"
+  eval "$(python3 - "$file" <<'PY'
+import json, sys, shlex
+p = json.load(open(sys.argv[1]))
+mods = p.get("modules", {})
+print("AO_OVERLAY_PROFILE=" + shlex.quote(p.get("overlay_profile") or p["name"]))
+for k, v in mods.items():
+    print(f"AO_MOD_{k}={'1' if v else '0'}")
+PY
+)"
+}
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --profile) AO_PROFILE=${2:?}; shift 2 ;;
+    --profile=*) AO_PROFILE=${1#*=}; shift ;;
+    --only) AO_ONLY=${2:?}; shift 2 ;;
+    --only=*) AO_ONLY=${1#*=}; shift ;;
+    --with) AO_WITH+=("${2:?}"); shift 2 ;;
+    --with=*) AO_WITH+=("${1#*=}"); shift ;;
+    --without) AO_WITHOUT+=("${2:?}"); shift 2 ;;
+    --without=*) AO_WITHOUT+=("${1#*=}"); shift ;;
+    --remove) AO_REMOVE=1; shift ;;
+    --dry-run) AO_DRY_RUN=1; shift ;;
+    --list) list_all; exit 0 ;;
+    -h|--help) usage; exit 0 ;;
+    *) ao_die "unknown argument: $1" ;;
+  esac
+done
+
+AO_MOD_fingerprint=0
+load_profile "$AO_PROFILE"
+
+# shellcheck source=modules/fingerprint.sh
+source "$AO_ROOT/modules/fingerprint.sh"
+
+ao_log "profile=$AO_PROFILE dry_run=$AO_DRY_RUN remove=$AO_REMOVE only=${AO_ONLY:-<profile>} overlay=$AO_OVERLAY_PROFILE"
+
+run_mod() {
+  local name=$1
+  local default_var="AO_MOD_$name"
+  local default_enabled=${!default_var:-0}
+  if ao_should_run_module "$name" "$default_enabled"; then
+    ao_log "→ module $name"
+    "module_$name"
+  else
+    ao_log "skip module $name"
+  fi
+}
+
+for mod in "${MODULE_ORDER[@]}"; do
+  run_mod "$mod"
+done
+
+ao_log "done"
