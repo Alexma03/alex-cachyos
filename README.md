@@ -32,11 +32,11 @@ cd alex-cachyos
 
 | Perfil | Qué hace |
 |--------|----------|
-| `galaxy` | Galaxy Book — bootstrap + fingerprint + mise + apps |
+| `galaxy` | Galaxy Book — bootstrap + fingerprint + mise + apps + vicinae |
 
 ## Módulos
 
-`bootstrap` · `fingerprint` · `devtools` · `apps`
+`bootstrap` · `fingerprint` · `devtools` · `apps` · `vicinae`
 
 ```bash
 ./apply --profile galaxy                      # instalar
@@ -44,6 +44,7 @@ cd alex-cachyos
 ./apply --profile galaxy --only fingerprint   # solo huella
 ./apply --profile galaxy --only devtools      # mise + pnpm/npm
 ./apply --profile galaxy --only apps          # programas + webapps Chrome
+./apply --profile galaxy --only vicinae       # launcher + clipboard
 ./apply --profile galaxy --only fingerprint --remove
 ./apply --profile galaxy --dry-run
 ```
@@ -88,6 +89,13 @@ Paquetes (Cursor, Warp, Slack, Docker+Desktop, Tailscale, …) + webapps Chrome
 
 Ver [docs/apps.md](docs/apps.md).
 
+## Vicinae
+
+Launcher + clipboard por defecto (sustituye la UX del Cosmic launcher).
+**Super+Space** abre Vicinae; **Super+V** el historial de clipboard.
+
+Ver [docs/vicinae.md](docs/vicinae.md).
+
 ## Layout
 
 ```
@@ -99,6 +107,7 @@ modules/
 templates/bootstrap/
 templates/devtools/
 templates/apps/
+templates/vicinae/
 profiles/
 packaging/libfprint-egismoc-sdcp-git/
 overlays/galaxy/etc/{pam.d,greetd}/

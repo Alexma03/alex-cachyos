@@ -13,7 +13,7 @@ AO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib/common.sh
 source "$AO_ROOT/lib/common.sh"
 
-MODULE_ORDER=(bootstrap fingerprint devtools apps)
+MODULE_ORDER=(bootstrap fingerprint devtools apps vicinae)
 
 AO_PROFILE=galaxy
 AO_DRY_RUN=0
@@ -42,7 +42,7 @@ Options:
   -h, --help         Show this help
 
 Profiles:
-  galaxy             Galaxy Book — bootstrap + fingerprint + mise + apps
+  galaxy             Galaxy Book — bootstrap + fingerprint + mise + apps + vicinae
 
 Examples:
   ./apply --profile galaxy
@@ -50,6 +50,7 @@ Examples:
   ./apply --profile galaxy --only fingerprint
   ./apply --profile galaxy --only devtools
   ./apply --profile galaxy --only apps
+  ./apply --profile galaxy --only vicinae
   ./apply --profile galaxy --only fingerprint --remove
 EOF
 }
@@ -105,6 +106,7 @@ AO_MOD_bootstrap=0
 AO_MOD_fingerprint=0
 AO_MOD_devtools=0
 AO_MOD_apps=0
+AO_MOD_vicinae=0
 load_profile "$AO_PROFILE"
 
 # shellcheck source=modules/bootstrap.sh
@@ -115,6 +117,8 @@ source "$AO_ROOT/modules/fingerprint.sh"
 source "$AO_ROOT/modules/devtools.sh"
 # shellcheck source=modules/apps.sh
 source "$AO_ROOT/modules/apps.sh"
+# shellcheck source=modules/vicinae.sh
+source "$AO_ROOT/modules/vicinae.sh"
 
 ao_log "profile=$AO_PROFILE dry_run=$AO_DRY_RUN remove=$AO_REMOVE only=${AO_ONLY:-<profile>} overlay=$AO_OVERLAY_PROFILE"
 

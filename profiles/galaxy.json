@@ -1,11 +1,12 @@
 {
   "name": "galaxy",
-  "description": "Samsung Galaxy Book (CachyOS/COSMIC) — bootstrap + fingerprint + mise + apps.",
+  "description": "Samsung Galaxy Book (CachyOS/COSMIC) — bootstrap + fingerprint + mise + apps + vicinae.",
   "modules": {
     "bootstrap": true,
     "fingerprint": true,
     "devtools": true,
-    "apps": true
+    "apps": true,
+    "vicinae": true
   },
   "overlay_profile": "galaxy"
 }
