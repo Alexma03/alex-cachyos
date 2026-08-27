@@ -1,5 +1,7 @@
 # Wayland compositor + shell. Do not pull cachyos-niri-noctalia
 # (xdg-desktop-portal-gnome / nautilus, Conflicts with desktop settings).
+# Polkit UI: Quickshell agent (Omarchy-style), not Noctalia's built-in panel.
 niri
 noctalia
 xwayland-satellite
+quickshell

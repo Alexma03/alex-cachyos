@@ -9,7 +9,7 @@ capsule_radius = 22
 center = [ "control-center", "clock", "media", "weather" ]
 concave_edge_corners = false
 contact_shadow = true
-end = [ "tray", "bar", "notifications", "network", "bluetooth", "volume", "brightness", "battery", "session" ]
+end = [ "tray", "notifications", "network", "bluetooth", "volume", "brightness", "battery", "session", "bar" ]
 margin_ends = 0
 radius = 0
 scale = 1.0500000081956387
@@ -39,14 +39,14 @@ widget_order = []
 [dock]
 background_opacity = 0.44999998994171619
 concave_edge_corners = false
-cross_axis_padding = 4
+cross_axis_padding = 0
 enabled = true
-icon_size = 34
+icon_size = 30
 inactive_scale = 1.0
 layer = "overlay"
 magnification_scale = 1.2500000037252903
-main_axis_padding = 4
-margin_edge = 8
+main_axis_padding = 0
+margin_edge = 6
 radius = 9
 show_dots = true
 
@@ -144,13 +144,15 @@ widget_order = [ "lockscreen-login-box@eDP-1", "lockscreen-login-box@DP-1", "loc
         show_unlock_hint = true
         show_weather = true
 
-[plugin_settings."salemsayed/codexbar-meter"]
-barProviderLimit = 1
+[plugin_settings."felipeartur/ai-usagebar"]
+refresh_minutes = 1
 
 [plugins]
-enabled = [ "frai3mega/battery-graph", "salemsayed/codexbar-meter", "goodroot/noctwhspr" ]
+enabled = [ "goodroot/noctwhspr", "felipeartur/ai-usagebar" ]
 
 [shell]
+# pkexec UI is Quickshell (qs -c polkit), not Noctalia's agent.
+polkit_agent = false
 corner_radius_scale = 1.4000000208616257
 screen_time_enabled = true
 telemetry_enabled = true
@@ -174,7 +176,7 @@ builtin = "Catppuccin"
 community_palette = "One Dark Two"
 mode = "auto"
 pure_black_dark = true
-source = "builtin"
+source = "community"
 wallpaper_scheme = "m3-content"
 
     [theme.templates.user.noctwhspr_mic_osd]
@@ -191,7 +193,8 @@ path = "/usr/share/noctalia/assets/noctalia-wallpaper.png"
 refresh_minutes = 5
 
 [widget.bar]
-type = "salemsayed/codexbar-meter:bar"
+type = "felipeartur/ai-usagebar:bar"
+vendor = "openai"
 
 [widget.bluetooth]
 show_label = true

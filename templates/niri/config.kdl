@@ -249,6 +249,24 @@ layout {
 
 // Noctalia only in this session (not COSMIC). Vicinae comes from the user systemd unit.
 spawn-at-startup "noctalia"
+// pkexec: Omarchy-style Quickshell agent only (not Noctalia / hyprpolkitagent / GNOME).
+spawn-at-startup "qs" "-c" "polkit" "-n" "-d"
+
+// Blur behind the pkexec overlay (Quickshell also requests ext-background-effect).
+layer-rule {
+    match namespace="^alex-cachyos-polkit$"
+    background-effect {
+        blur true
+        // Blur real windows under the modal, not only the wallpaper.
+        xray false
+    }
+}
+
+blur {
+    // Soft glass — fewer/lighter passes than the niri defaults.
+    passes 2
+    offset 1.5
+}
 
 // To run a shell command (with variables, pipes, etc.), use spawn-sh-at-startup:
 // spawn-sh-at-startup "qs -c ~/source/qs/MyAwesomeShell"

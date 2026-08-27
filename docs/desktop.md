@@ -1,6 +1,7 @@
 # Desktop — Niri + Noctalia (default session)
 
-COSMIC stays installed as a greeter option. Niri is the session this profile logs into.
+Daily desktop is **Niri + Noctalia**. COSMIC stays only as a greeter login option
+(and optional one-off session). Login screen is still **cosmic-greeter** (fingerprint / PAM `login`).
 
 ## Install
 
@@ -8,23 +9,27 @@ COSMIC stays installed as a greeter option. Niri is the session this profile log
 ./apply --profile galaxy --only desktop
 ```
 
-Full `./apply --profile galaxy` runs this after apps (so `hyprwhspr` / `codexbar-cli` exist).
+Full `./apply --profile galaxy` runs this after apps (so `hyprwhspr` / `ai-usagebar-bin` exist).
 
 ## What it does
 
-1. Installs `niri`, `noctalia`, `xwayland-satellite` (not the `cachyos-niri-noctalia` meta)
+1. Installs `niri`, `noctalia`, `xwayland-satellite`, `quickshell`
 2. Writes the live Galaxy configs:
-   - `~/.config/niri/config.kdl`
-   - `~/.local/state/noctalia/settings.toml`
+   - `~/.config/niri/config.kdl` (spawns Noctalia + `qs -c polkit`)
+   - `~/.local/state/noctalia/settings.toml` (`shell.polkit_agent = false`)
    - `~/.config/hyprwhspr/config.json`
-3. Sets **Niri** as the default session (`~/.dmrc`, AccountsService, cosmic-greeter `last_session`)
-4. `hyprwhspr noctalia install` → bar plugin `goodroot/noctwhspr` (local STT, replaces Spokenly)
-5. Enables Noctalia plugins: CodexBar meter, noctwhspr, battery-graph
-6. Enables `hyprwhspr.service` (user)
+   - `~/.config/quickshell/polkit/` — Omarchy-style pkexec UI
+3. Stops any other polkit agents (hyprpolkitagent, GNOME/KDE/LXQt, Noctalia agent)
+4. Sets **Niri** as the default session (`~/.dmrc`, AccountsService, cosmic-greeter `last_session`)
+5. `hyprwhspr noctalia install` → bar plugin `goodroot/noctwhspr`
+6. Enables Noctalia plugins: `goodroot/noctwhspr`, `felipeartur/ai-usagebar`
+7. Enables `hyprwhspr.service` and starts `qs -c polkit`
 
-Login screen stays **cosmic-greeter** (fingerprint / PAM `login`). Pick COSMIC in the session list if you want it for a one-off.
+Niri is not a full DE. `pkexec` needs a graphical polkit agent — this profile uses a
+**minimal Quickshell agent** (fingerprint square / password field, Esc to cancel, no Cancel
+button). Do not enable Noctalia’s `shell.polkit_agent` or other agents at the same time.
 
-## Shortcuts that live in Niri (not COSMIC)
+## Shortcuts that live in Niri
 
 | Bind | Action |
 |------|--------|

@@ -102,8 +102,9 @@ Ver [docs/vicinae.md](docs/vicinae.md).
 ## Desktop (Niri)
 
 Sesión por defecto: Niri + Noctalia. Config actual del Galaxy (monitores, bordes,
-foco al cursor, plugins CodexBar + hyprwhspr). Login sigue en cosmic-greeter
-(huella).
+foco al cursor, plugins noctwhspr + ai-usagebar). `pkexec` usa un agente Quickshell
+minimal estilo Omarchy. Login sigue en cosmic-greeter (huella). COSMIC solo como
+opción residual en el greeter.
 
 Ver [docs/desktop.md](docs/desktop.md).
 
@@ -122,6 +123,7 @@ templates/vicinae/
 templates/niri/
 templates/noctalia/
 templates/hyprwhspr/
+templates/quickshell-polkit/
 templates/desktop/
 profiles/
 packaging/libfprint-egismoc-sdcp-git/
