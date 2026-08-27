@@ -1,0 +1,58 @@
+# Apps — packages + Chrome webapps
+
+## Install
+
+```bash
+./apply --profile galaxy --only apps
+```
+
+## Packages
+
+| App | Source | Package |
+|-----|--------|---------|
+| Cursor | CachyOS | `cursor-bin` |
+| Warp | AUR | `warp-terminal-bin` |
+| Slack | AUR | `slack-desktop` |
+| ChatGPT | CachyOS | `chatgpt-desktop-bin` |
+| Discord | repos | `discord` |
+| LocalSend | CachyOS | `localsend` |
+| Tailscale | repos | `tailscale` |
+| Docker engine | repos | `docker` |
+| Docker Desktop | AUR | `docker-desktop` |
+| Spokenly | AUR | `spokenly` |
+| NordVPN | AUR | `nordvpn-bin` |
+| Chrome | bootstrap | `google-chrome` |
+
+Chrome is installed by **bootstrap**. Docker Desktop provides compose/buildx (do not install those repo packages separately).
+
+## Webapps (Chrome `--app`)
+
+Omarchy-style: `.desktop` → `alex-cachyos-webapp-launch` → `google-chrome-stable --app=URL`.
+
+| Name | URL |
+|------|-----|
+| WhatsApp | https://web.whatsapp.com |
+| Telegram | https://web.telegram.org/k/ |
+| Linear | https://linear.app |
+
+Native `telegram-desktop` is removed if present.
+
+## After install
+
+```bash
+# Docker (new group → new login / session)
+docker ps
+
+# Tailscale
+sudo tailscale up
+
+# NordVPN
+nordvpn login
+nordvpn connect
+```
+
+## Remove webapps only
+
+```bash
+./apply --profile galaxy --only apps --remove
+```

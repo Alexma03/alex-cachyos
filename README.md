@@ -32,17 +32,18 @@ cd alex-cachyos
 
 | Perfil | Qué hace |
 |--------|----------|
-| `galaxy` | Galaxy Book — bootstrap + Egis fingerprint + mise/node/pnpm |
+| `galaxy` | Galaxy Book — bootstrap + fingerprint + mise + apps |
 
 ## Módulos
 
-`bootstrap` · `fingerprint` · `devtools`
+`bootstrap` · `fingerprint` · `devtools` · `apps`
 
 ```bash
 ./apply --profile galaxy                      # instalar
 ./apply --profile galaxy --only bootstrap     # limpieza + Chrome/paru/zsh
 ./apply --profile galaxy --only fingerprint   # solo huella
 ./apply --profile galaxy --only devtools      # mise + pnpm/npm
+./apply --profile galaxy --only apps          # programas + webapps Chrome
 ./apply --profile galaxy --only fingerprint --remove
 ./apply --profile galaxy --dry-run
 ```
@@ -80,14 +81,24 @@ Ver [docs/fingerprint.md](docs/fingerprint.md).
 
 Ver [docs/devtools.md](docs/devtools.md).
 
+## Apps
+
+Paquetes (Cursor, Warp, Slack, Docker+Desktop, Tailscale, …) + webapps Chrome
+`--app` estilo Omarchy (WhatsApp, Telegram, Linear).
+
+Ver [docs/apps.md](docs/apps.md).
+
 ## Layout
 
 ```
 apply
 lib/common.sh
+lib/webapp.sh
+bin/alex-cachyos-webapp-launch
 modules/
 templates/bootstrap/
 templates/devtools/
+templates/apps/
 profiles/
 packaging/libfprint-egismoc-sdcp-git/
 overlays/galaxy/etc/{pam.d,greetd}/

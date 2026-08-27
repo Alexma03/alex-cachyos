@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Launch a URL as a Chrome app window (Omarchy-style webapp, no browser chrome).
+set -euo pipefail
+
+if [[ $# -lt 1 ]]; then
+  echo "usage: $0 <url> [chrome-args...]" >&2
+  exit 1
+fi
+
+url=$1
+shift
+
+chrome=
+for c in google-chrome-stable google-chrome chromium; do
+  if command -v "$c" >/dev/null 2>&1; then
+    chrome=$(command -v "$c")
+    break
+  fi
+done
+
+if [[ -z $chrome ]]; then
+  echo "error: Google Chrome (or Chromium) not found" >&2
+  exit 1
+fi
+
+# Detach from terminal; COSMIC launcher does not need uwsm.
+exec setsid "$chrome" --app="$url" "$@"
