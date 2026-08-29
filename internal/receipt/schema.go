@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"regexp"
 	"strings"
+	"unicode"
 )
 const SchemaV1 = "alex-cachyos.receipt/v1"
 const Schema = SchemaV1
@@ -163,16 +165,16 @@ func Validate(data []byte) error {
 }
 func scanJSON(data []byte) error {
 	dec := json.NewDecoder(bytes.NewReader(data))
-	if err := scanValue(dec); err != nil { return err }
+	if err := scanValue(dec, ""); err != nil { return err }
 	if _, err := dec.Token(); err != io.EOF { return ErrInvalid }
 	return nil
 }
-func scanValue(dec *json.Decoder) error {
+func scanValue(dec *json.Decoder, field string) error {
 	tok, err := dec.Token()
 	if err != nil { return ErrInvalid }
 	switch v := tok.(type) {
 	case string:
-		if prohibitedString(v) { return ErrSensitiveContent }
+		if prohibitedString(v, field) { return ErrSensitiveContent }
 	case json.Delim:
 		switch v {
 		case '{':
@@ -181,20 +183,25 @@ func scanValue(dec *json.Decoder) error {
 				key, err := dec.Token(); if err != nil { return ErrInvalid }
 				name, ok := key.(string); if !ok || seen[name] { return ErrInvalid }
 				seen[name] = true
-				if sensitiveKey(name) { return ErrSensitiveContent }
-				if err := scanValue(dec); err != nil { return err }
+				if sensitiveKey(name, field) { return ErrSensitiveContent }
+				if err := scanValue(dec, name); err != nil { return err }
 			}
 			if end, err := dec.Token(); err != nil || end != json.Delim('}') { return ErrInvalid }
 		case '[':
-			for dec.More() { if err := scanValue(dec); err != nil { return err } }
+			for dec.More() { if err := scanValue(dec, field); err != nil { return err } }
 			if end, err := dec.Token(); err != nil || end != json.Delim(']') { return ErrInvalid }
 		}
 	}
 	return nil
 }
-func prohibitedString(s string) bool {
+var receiptIdentifierPattern = regexp.MustCompile(`^/?[A-Za-z0-9_@~+.-]+(?:[/=:][A-Za-z0-9_@~+.-]+)*$`)
+var receiptSecretMarkers = []string{"apikey", "secret", "token", "password", "credential", "authorization", "bearer"}
+func normalizeSensitiveMarkers(s string) string { return strings.Map(func(r rune) rune { if unicode.IsLetter(r) || unicode.IsNumber(r) { return unicode.ToLower(r) }; return -1 }, s) }
+func prohibitedString(s, field string) bool {
 	l := strings.ToLower(s)
-	if strings.Contains(l, "fingerprint") || strings.Contains(l, "biometric") || strings.Contains(l, "fprint") || strings.Contains(l, "dirty diff") || strings.Contains(l, "diff --git") || strings.Contains(l, "@@ -") { return true }
+	normalized := normalizeSensitiveMarkers(s)
+	if (strings.Contains(normalized, "fingerprint") || strings.Contains(normalized, "biometric") || strings.Contains(normalized, "fprint")) && !isBenignBiometricIdentifier(s, field) { return true }
+	if strings.Contains(l, "dirty diff") || strings.Contains(l, "diff --git") || strings.Contains(l, "@@ -") { return true }
 	trimmed := strings.TrimSpace(l)
 	if strings.HasPrefix(trimmed, "--- ") && strings.Contains(l, "\n+++ ") { return true }
 	for _, marker := range []string{"api_key", "api-key", "apikey", "token", "password", "secret", "credential", "authorization", "bearer"} {
@@ -207,13 +214,24 @@ func prohibitedString(s string) bool {
 	}
 	return false
 }
-func sensitiveKey(name string) bool {
-	l := strings.ToLower(name)
-	if l == "credentials" || l == "referencednames" { return false }
-	for _, part := range []string{"argv", "credential", "secret", "password", "token", "apikey", "api_key", "biometric", "fingerprint", "fprint", "diff", "keyring"} {
-		if strings.Contains(l, part) { return true }
+func isBenignBiometricIdentifier(s, field string) bool {
+	if field == "warnings" || field == "errors" {
+		switch strings.ToLower(strings.TrimSpace(s)) { case "fingerprint", "fprintd": return true; default: return false }
 	}
-	return l == "auth" || strings.Contains(l, "authstate")
+	normalized := normalizeSensitiveMarkers(s)
+	if !receiptIdentifierPattern.MatchString(s) || (!strings.Contains(normalized, "fingerprint") && !strings.Contains(normalized, "biometric") && !strings.Contains(normalized, "fprint")) { return false }
+	for _, marker := range receiptSecretMarkers { if strings.Contains(normalized, marker) { return false } }
+	return true
+}
+func sensitiveKey(name, parent string) bool {
+	if name == "credentials" && parent == "" || name == "referencedNames" && parent == "credentials" { return false }
+	normalized := normalizeSensitiveMarkers(name)
+	if strings.Contains(normalized, "referencednames") { return true }
+	for _, part := range []string{"argv", "diff", "keyring"} { if strings.Contains(normalized, part) { return true } }
+	for _, marker := range receiptSecretMarkers { if strings.Contains(normalized, marker) { return true } }
+	if normalized == "auth" || strings.Contains(normalized, "authstate") { return true }
+	if strings.Contains(normalized, "biometric") || strings.Contains(normalized, "fingerprint") || strings.Contains(normalized, "fprint") { return !isBenignBiometricIdentifier(name, "") }
+	return false
 }
 
 func section(parent map[string]json.RawMessage, name string, required, optional []string) (map[string]json.RawMessage, bool) {
