@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -99,5 +100,205 @@ func TestDecodeIsPureWithTemporaryWorkingDirectory(t *testing.T) {
 	}
 	if len(after) != len(before) {
 		t.Fatalf("decode wrote files in cwd: before=%d after=%d", len(before), len(after))
+	}
+}
+
+func TestDecodeAcceptsTypedPins(t *testing.T) {
+	got, err := Decode([]byte(`catalogVersion: 1
+kind: Host
+pins:
+  npm:
+    provider: npm:provider@1.2.3
+  pacmanArtifacts:
+    example:
+      package: example-package
+      version: 1.2.3-1
+      source: repository
+      sha256: not-a-digest
+  aurLocal:
+    driver:
+      sourceCommit: not-a-commit
+      patchSHA256: not-a-digest
+  remoteArtifacts:
+    tool:
+      url: http://downloads.example.invalid/tool.tar.zst
+      sha256: not-a-digest
+  localPathPackages:
+    gentle-pi: not-a-resolved-path
+`))
+	if err != nil {
+		t.Fatalf("decode pins: %v", err)
+	}
+	if got.Pins == nil {
+		t.Fatal("typed catalog lost pins")
+	}
+	if got.Pins.NPM["provider"] != "npm:provider@1.2.3" {
+		t.Fatalf("typed npm pins = %#v", got.Pins.NPM)
+	}
+	if got.Pins.PacmanArtifacts["example"] != (PacmanArtifactPin{
+		Package: "example-package",
+		Version: "1.2.3-1",
+		Source:  PacmanArtifactRepository,
+		SHA256:  "not-a-digest",
+	}) {
+		t.Fatalf("typed pacman pins = %#v", got.Pins.PacmanArtifacts)
+	}
+	if got.Pins.AURLocal["driver"] != (AURLocalPin{SourceCommit: "not-a-commit", PatchSHA256: "not-a-digest"}) {
+		t.Fatalf("typed AUR pins = %#v", got.Pins.AURLocal)
+	}
+	if got.Pins.RemoteArtifacts["tool"] != (RemoteArtifactPin{URL: "http://downloads.example.invalid/tool.tar.zst", SHA256: "not-a-digest"}) {
+		t.Fatalf("typed remote pins = %#v", got.Pins.RemoteArtifacts)
+	}
+	if got.Pins.LocalPathPackages["gentle-pi"] != "not-a-resolved-path" {
+		t.Fatalf("typed local path pins = %#v", got.Pins.LocalPathPackages)
+	}
+}
+
+func TestDecodePinsPreservesPresenceAndCopiesMaps(t *testing.T) {
+	minimal := []byte("catalogVersion: 1\nkind: Global\n")
+	omittedDocument, err := DecodeDocument(minimal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if omittedDocument.Pins != nil {
+		t.Fatal("omitted pins retained document presence")
+	}
+	omittedCatalog, err := Decode(minimal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if omittedCatalog.Pins != nil {
+		t.Fatal("omitted pins retained catalog presence")
+	}
+
+	emptyDocument, err := DecodeDocument([]byte("catalogVersion: 1\nkind: Global\npins: {}\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if emptyDocument.Pins == nil {
+		t.Fatal("explicit empty pins lost document presence")
+	}
+	if emptyDocument.Pins.NPM != nil || emptyDocument.Pins.PacmanArtifacts != nil || emptyDocument.Pins.AURLocal != nil || emptyDocument.Pins.RemoteArtifacts != nil || emptyDocument.Pins.LocalPathPackages != nil {
+		t.Fatalf("empty pins unexpectedly populated sources: %#v", emptyDocument.Pins)
+	}
+	emptyCatalog, err := Decode([]byte("catalogVersion: 1\nkind: Global\npins: {}\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if emptyCatalog.Pins == nil {
+		t.Fatal("explicit empty pins lost catalog presence")
+	}
+
+	sources, err := DecodeDocument([]byte(`catalogVersion: 1
+kind: Global
+pins:
+  npm: {}
+  pacmanArtifacts: {}
+  aurLocal: {}
+  remoteArtifacts: {}
+  localPathPackages: {}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sources.Pins == nil || sources.Pins.NPM == nil || sources.Pins.PacmanArtifacts == nil || sources.Pins.AURLocal == nil || sources.Pins.RemoteArtifacts == nil || sources.Pins.LocalPathPackages == nil {
+		t.Fatalf("explicit empty source maps lost presence: %#v", sources.Pins)
+	}
+	typed, err := catalogFromDocument(sources)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if typed.Pins == nil || typed.Pins.NPM == nil || typed.Pins.PacmanArtifacts == nil || typed.Pins.AURLocal == nil || typed.Pins.RemoteArtifacts == nil || typed.Pins.LocalPathPackages == nil {
+		t.Fatalf("typed empty source maps lost presence: %#v", typed.Pins)
+	}
+
+	data := []byte(`catalogVersion: 1
+kind: Global
+pins:
+  npm:
+    provider: npm:provider@1.2.3
+  localPathPackages:
+    gentle-pi: not-a-resolved-path
+`)
+	document, err := DecodeDocument(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	catalog, err := catalogFromDocument(document)
+	if err != nil {
+		t.Fatal(err)
+	}
+	(*document.Pins.NPM)["provider"] = "changed"
+	delete(*document.Pins.LocalPathPackages, "gentle-pi")
+	if catalog.Pins.NPM["provider"] != "npm:provider@1.2.3" || catalog.Pins.LocalPathPackages["gentle-pi"] != "not-a-resolved-path" {
+		t.Fatalf("typed pins alias structural maps: %#v", catalog.Pins)
+	}
+}
+
+func TestDecodeRejectsMissingArtifactFieldsWithStablePaths(t *testing.T) {
+	tests := []struct {
+		name   string
+		source string
+		fields string
+		path   string
+	}{
+		{
+			name:   "pacman package",
+			source: "pacmanArtifacts",
+			fields: "      version: 1.2.3-1\n      source: cache\n      sha256: digest\n",
+			path:   "/pins/pacmanArtifacts/example/package",
+		},
+		{
+			name:   "pacman version",
+			source: "pacmanArtifacts",
+			fields: "      package: example-package\n      source: cache\n      sha256: digest\n",
+			path:   "/pins/pacmanArtifacts/example/version",
+		},
+		{
+			name:   "pacman source",
+			source: "pacmanArtifacts",
+			fields: "      package: example-package\n      version: 1.2.3-1\n      sha256: digest\n",
+			path:   "/pins/pacmanArtifacts/example/source",
+		},
+		{
+			name:   "pacman sha256",
+			source: "pacmanArtifacts",
+			fields: "      package: example-package\n      version: 1.2.3-1\n      source: cache\n",
+			path:   "/pins/pacmanArtifacts/example/sha256",
+		},
+		{
+			name:   "aur source commit",
+			source: "aurLocal",
+			fields: "      patchSHA256: digest\n",
+			path:   "/pins/aurLocal/example/sourceCommit",
+		},
+		{
+			name:   "aur patch sha256",
+			source: "aurLocal",
+			fields: "      sourceCommit: commit\n",
+			path:   "/pins/aurLocal/example/patchSHA256",
+		},
+		{
+			name:   "remote url",
+			source: "remoteArtifacts",
+			fields: "      sha256: digest\n",
+			path:   "/pins/remoteArtifacts/example/url",
+		},
+		{
+			name:   "remote sha256",
+			source: "remoteArtifacts",
+			fields: "      url: http://example.invalid/tool\n",
+			path:   "/pins/remoteArtifacts/example/sha256",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			data := fmt.Sprintf("catalogVersion: 1\nkind: Global\npins:\n  %s:\n    example:\n%s", test.source, test.fields)
+			if _, err := Decode([]byte(data)); err == nil {
+				t.Fatal("missing pin field was accepted")
+			} else if !strings.Contains(err.Error(), test.path) {
+				t.Fatalf("error %q does not name %q", err, test.path)
+			}
+		})
 	}
 }

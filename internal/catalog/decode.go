@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sort"
 
 	"gopkg.in/yaml.v3"
 )
@@ -183,6 +184,13 @@ func catalogFromDocument(document Document) (Catalog, error) {
 		catalog.Overlays = make([]string, len(*document.Overlays))
 		copy(catalog.Overlays, *document.Overlays)
 	}
+	if document.Pins != nil {
+		pins, err := pinsFromDocument(document.Pins)
+		if err != nil {
+			return Catalog{}, err
+		}
+		catalog.Pins = pins
+	}
 	if document.CheckoutPins != nil {
 		catalog.CheckoutPins = make(map[string]CheckoutPin, len(*document.CheckoutPins))
 		for name, pin := range *document.CheckoutPins {
@@ -193,4 +201,101 @@ func catalogFromDocument(document Document) (Catalog, error) {
 		}
 	}
 	return catalog, nil
+}
+
+func pinsFromDocument(document *PinsDocument) (*Pins, error) {
+	pins := &Pins{}
+	if document.NPM != nil {
+		pins.NPM = copyStringMap(*document.NPM)
+	}
+	if document.PacmanArtifacts != nil {
+		pins.PacmanArtifacts = make(map[string]PacmanArtifactPin, len(*document.PacmanArtifacts))
+		names := sortedPinNames(*document.PacmanArtifacts)
+		for _, name := range names {
+			pin := (*document.PacmanArtifacts)[name]
+			packageName, err := requiredPinField("pacmanArtifacts", name, "package", pin.Package)
+			if err != nil {
+				return nil, err
+			}
+			version, err := requiredPinField("pacmanArtifacts", name, "version", pin.Version)
+			if err != nil {
+				return nil, err
+			}
+			source, err := requiredPinField("pacmanArtifacts", name, "source", pin.Source)
+			if err != nil {
+				return nil, err
+			}
+			sha256, err := requiredPinField("pacmanArtifacts", name, "sha256", pin.SHA256)
+			if err != nil {
+				return nil, err
+			}
+			pins.PacmanArtifacts[name] = PacmanArtifactPin{
+				Package: packageName,
+				Version: version,
+				Source:  PacmanArtifactSource(source),
+				SHA256:  sha256,
+			}
+		}
+	}
+	if document.AURLocal != nil {
+		pins.AURLocal = make(map[string]AURLocalPin, len(*document.AURLocal))
+		names := sortedPinNames(*document.AURLocal)
+		for _, name := range names {
+			pin := (*document.AURLocal)[name]
+			sourceCommit, err := requiredPinField("aurLocal", name, "sourceCommit", pin.SourceCommit)
+			if err != nil {
+				return nil, err
+			}
+			patchSHA256, err := requiredPinField("aurLocal", name, "patchSHA256", pin.PatchSHA256)
+			if err != nil {
+				return nil, err
+			}
+			pins.AURLocal[name] = AURLocalPin{SourceCommit: sourceCommit, PatchSHA256: patchSHA256}
+		}
+	}
+	if document.RemoteArtifacts != nil {
+		pins.RemoteArtifacts = make(map[string]RemoteArtifactPin, len(*document.RemoteArtifacts))
+		names := sortedPinNames(*document.RemoteArtifacts)
+		for _, name := range names {
+			pin := (*document.RemoteArtifacts)[name]
+			url, err := requiredPinField("remoteArtifacts", name, "url", pin.URL)
+			if err != nil {
+				return nil, err
+			}
+			sha256, err := requiredPinField("remoteArtifacts", name, "sha256", pin.SHA256)
+			if err != nil {
+				return nil, err
+			}
+			pins.RemoteArtifacts[name] = RemoteArtifactPin{URL: url, SHA256: sha256}
+		}
+	}
+	if document.LocalPathPackages != nil {
+		pins.LocalPathPackages = copyStringMap(*document.LocalPathPackages)
+	}
+	return pins, nil
+}
+
+func copyStringMap(values map[string]string) map[string]string {
+	copyOfValues := make(map[string]string, len(values))
+	for name, value := range values {
+		copyOfValues[name] = value
+	}
+	return copyOfValues
+}
+
+func sortedPinNames[T any](pins map[string]T) []string {
+	names := make([]string, 0, len(pins))
+	for name := range pins {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+func requiredPinField(source, name, field string, value *string) (string, error) {
+	if value == nil {
+		path := childPointer(childPointer(childPointer("/pins", source), name), field)
+		return "", fmt.Errorf("%s: required pin field is missing", path)
+	}
+	return *value, nil
 }
