@@ -20,7 +20,14 @@ const (
 	manifestSchema = "alex-cachyos.source-manifest/v1"
 )
 
-var declaredPaths = []string{"catalog/", "packaging/"}
+var declaredPaths = []string{
+	"bin/alex-cachyos-webapp-launch",
+	"catalog/",
+	"packaging/",
+	"templates/apps/",
+	"templates/devtools/",
+	"templates/vicinae/",
+}
 
 type manifest struct {
 	Schema  string  `json:"schema"`

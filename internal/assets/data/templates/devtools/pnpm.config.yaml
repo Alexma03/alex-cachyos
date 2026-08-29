@@ -1,0 +1,27 @@
+# Supply-chain defaults (machine-wide).
+# Layers: block new publishes, block trust downgrades, fail on unapproved build scripts.
+
+# Don't install versions published in the last 3 days (community detection window).
+minimumReleaseAge: 4320
+minimumReleaseAgeStrict: true
+
+# Block installs when publish trust is weaker than a previous version.
+trustPolicy: no-downgrade
+
+# Fail install if a dep wants lifecycle/build scripts that aren't allowlisted.
+# Approve with: pnpm approve-builds / onlyBuiltDependencies (prefer per-project)
+strictDepBuilds: true
+
+# Block git/http/tarball exotic transitive deps (common malware vector).
+blockExoticSubdeps: true
+
+# Prefer pnpm when scaffolding.
+initPackageManager: pnpm
+
+# Re-check lockfile policies; don't silently trust a lockfile from elsewhere.
+trustLockfile: false
+verifyDepsBeforeRun: error
+verifyStoreIntegrity: true
+
+# Global CLIs → ~/.local/bin. pnpm itself comes from mise — never `pnpm setup`.
+globalBinDir: @HOME@/.local/bin

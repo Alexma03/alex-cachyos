@@ -1,0 +1,20 @@
+{
+    // Bare Super steals Super+key combos on COSMIC.
+    (
+        modifiers: [Super],
+    ): Disable,
+
+    // Launcher (system_actions Launcher → vicinae toggle)
+    (
+        modifiers: [Super],
+        key: "space",
+        description: Some("Vicinae launcher"),
+    ): System(Launcher),
+
+    // Clipboard history
+    (
+        modifiers: [Super],
+        key: "v",
+        description: Some("Vicinae clipboard history"),
+    ): Spawn("vicinae vicinae://launch/clipboard/history?toggle=true"),
+}

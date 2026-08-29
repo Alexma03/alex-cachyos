@@ -1,0 +1,5 @@
+# name|url|icon_url
+# Chrome --app webapps (no native clients for these)
+WhatsApp|https://web.whatsapp.com|https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/whatsapp.png
+Telegram|https://web.telegram.org/k/|https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/telegram.png
+Linear|https://linear.app|https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/linear.png

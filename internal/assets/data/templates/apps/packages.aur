@@ -1,0 +1,7 @@
+# AUR via paru (docker-desktop provides compose/buildx — do not pacman those separately)
+warp-terminal-bin
+slack-desktop
+docker-desktop
+hyprwhspr
+ai-usagebar-bin
+nordvpn-bin

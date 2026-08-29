@@ -17,6 +17,10 @@ func assetFixture(t *testing.T) string {
 	for _, dir := range []string{
 		filepath.Join("catalog", "nested"),
 		filepath.Join("packaging", "libfprint-egismoc-sdcp-git", "patches"),
+		filepath.Join("templates", "devtools"),
+		filepath.Join("templates", "apps"),
+		filepath.Join("templates", "vicinae"),
+		"bin",
 	} {
 		if err := os.MkdirAll(filepath.Join(root, dir), 0o755); err != nil {
 			t.Fatal(err)
@@ -29,7 +33,16 @@ func assetFixture(t *testing.T) string {
 		"packaging/libfprint-egismoc-sdcp-git/PKGBUILD": []byte("pkgname=example\n"),
 		"packaging/libfprint-egismoc-sdcp-git/0001-egismoc-drop-sdcp-claim-on-close.patch":         patch,
 		"packaging/libfprint-egismoc-sdcp-git/patches/0001-egismoc-drop-sdcp-claim-on-close.patch": patch,
-		"not-declared.txt": []byte("outside\n"),
+		"templates/devtools/mise.config.toml":                                                      []byte("[tools]\nnode = \"lts\"\n"),
+		"templates/devtools/npmrc":                                                                 []byte("min-release-age=3\n"),
+		"templates/devtools/pnpm.config.yaml":                                                      []byte("minimumReleaseAge: 4320\n"),
+		"templates/apps/packages.aur":                                                              []byte("warp-terminal-bin\n"),
+		"templates/apps/packages.pacman":                                                           []byte("cursor-bin\n"),
+		"templates/apps/webapps.list":                                                              []byte("WhatsApp|https://web.whatsapp.com|icon\n"),
+		"templates/vicinae/99-vicinae-cosmic.conf":                                                 []byte("COSMIC_DATA_CONTROL_ENABLED=1\n"),
+		"templates/vicinae/cosmic-shortcuts-custom":                                                []byte("(modifiers: [Super],): Disable\n"),
+		"bin/alex-cachyos-webapp-launch":                                                           []byte("#!/usr/bin/env bash\n"),
+		"not-declared.txt":                                                                         []byte("outside\n"),
 	} {
 		if err := os.WriteFile(filepath.Join(root, name), data, 0o644); err != nil {
 			t.Fatal(err)
@@ -66,11 +79,20 @@ func TestSyncWritesManifestAndOnlyDeclaredAssets(t *testing.T) {
 		t.Fatal("manifest is not canonical JSON with one trailing newline")
 	}
 	want := []string{
+		"bin/alex-cachyos-webapp-launch",
 		"catalog/declared.txt",
 		"catalog/nested/asset.bin",
 		"packaging/libfprint-egismoc-sdcp-git/0001-egismoc-drop-sdcp-claim-on-close.patch",
 		"packaging/libfprint-egismoc-sdcp-git/PKGBUILD",
 		"packaging/libfprint-egismoc-sdcp-git/patches/0001-egismoc-drop-sdcp-claim-on-close.patch",
+		"templates/apps/packages.aur",
+		"templates/apps/packages.pacman",
+		"templates/apps/webapps.list",
+		"templates/devtools/mise.config.toml",
+		"templates/devtools/npmrc",
+		"templates/devtools/pnpm.config.yaml",
+		"templates/vicinae/99-vicinae-cosmic.conf",
+		"templates/vicinae/cosmic-shortcuts-custom",
 	}
 	if len(m.Entries) != len(want) {
 		t.Fatalf("manifest entries = %#v", m.Entries)
@@ -82,8 +104,8 @@ func TestSyncWritesManifestAndOnlyDeclaredAssets(t *testing.T) {
 	}
 	data := []byte("declared\n")
 	sum := sha256.Sum256(data)
-	if m.Entries[0].Size != int64(len(data)) || m.Entries[0].SHA256 != hex.EncodeToString(sum[:]) {
-		t.Fatalf("manifest entry = %#v", m.Entries[0])
+	if m.Entries[1].Size != int64(len(data)) || m.Entries[1].SHA256 != hex.EncodeToString(sum[:]) {
+		t.Fatalf("manifest entry = %#v", m.Entries[1])
 	}
 	if _, err := os.Stat(filepath.Join(dest, "not-declared.txt")); !os.IsNotExist(err) {
 		t.Fatalf("undeclared source was copied: %v", err)
@@ -147,6 +169,56 @@ func TestSyncEmbedsPackagingAssets(t *testing.T) {
 	for _, rel := range rels {
 		if !seen[rel] {
 			t.Fatalf("manifest missing packaging entry %q", rel)
+		}
+	}
+}
+
+func TestSyncEmbedsDevtoolsAppsVicinaeLauncher(t *testing.T) {
+	root, dest := syncedFixture(t)
+	rels := []string{
+		"bin/alex-cachyos-webapp-launch",
+		"templates/apps/packages.aur",
+		"templates/apps/packages.pacman",
+		"templates/apps/webapps.list",
+		"templates/devtools/mise.config.toml",
+		"templates/devtools/npmrc",
+		"templates/devtools/pnpm.config.yaml",
+		"templates/vicinae/99-vicinae-cosmic.conf",
+		"templates/vicinae/cosmic-shortcuts-custom",
+	}
+	var m manifest
+	mb, err := os.ReadFile(filepath.Join(dest, "source-manifest.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(mb, &m); err != nil {
+		t.Fatal(err)
+	}
+	byPath := map[string]int{}
+	entryByPath := map[string]entry{}
+	for _, e := range m.Entries {
+		byPath[e.Path]++
+		entryByPath[e.Path] = e
+	}
+	for _, rel := range rels {
+		if byPath[rel] != 1 {
+			t.Fatalf("manifest has %d entries for %q, want exactly one", byPath[rel], rel)
+		}
+		src, err := os.ReadFile(filepath.Join(root, rel))
+		if err != nil {
+			t.Fatal(err)
+		}
+		cp, err := os.ReadFile(filepath.Join(dest, rel))
+		if err != nil {
+			t.Fatalf("generated asset %s missing: %v", rel, err)
+		}
+		if !bytes.Equal(src, cp) {
+			t.Fatalf("generated asset %s drifted from source", rel)
+		}
+		sum := sha256.Sum256(src)
+		e := entryByPath[rel]
+		if e.Size != int64(len(src)) || e.SHA256 != hex.EncodeToString(sum[:]) {
+			t.Fatalf("manifest entry mismatch for %s: %#v", rel, e)
 		}
 	}
 }

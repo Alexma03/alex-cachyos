@@ -2,6 +2,11 @@
   "schema": "alex-cachyos.source-manifest/v1",
   "entries": [
     {
+      "path": "bin/alex-cachyos-webapp-launch",
+      "size": 573,
+      "sha256": "35852f7196673c987148ac2850ab6d61d9689eb52409fafaf615924496ba8f23"
+    },
+    {
       "path": "catalog/.gitkeep",
       "size": 0,
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -25,6 +30,46 @@
       "path": "packaging/libfprint-egismoc-sdcp-git/patches/0001-egismoc-drop-sdcp-claim-on-close.patch",
       "size": 1933,
       "sha256": "dd248cb9225857385f32ce36da887cb039d5ec7bffd54f412a790e898349d03d"
+    },
+    {
+      "path": "templates/apps/packages.aur",
+      "size": 176,
+      "sha256": "4ff8c9d5fa3307500b450bdd70533db5aa7fbd1007abfd30f08fb1a137a1438d"
+    },
+    {
+      "path": "templates/apps/packages.pacman",
+      "size": 91,
+      "sha256": "20e4167341deecddb391810e04da721569d0b84b593dae2034e8778c0c0869f1"
+    },
+    {
+      "path": "templates/apps/webapps.list",
+      "size": 387,
+      "sha256": "f77b7bded41bcbaadfae766e878174d3a678cd3a63a70a6f5bc071455ee1f95f"
+    },
+    {
+      "path": "templates/devtools/mise.config.toml",
+      "size": 218,
+      "sha256": "e32f50cc83c015c3dfd11850222150d298f67fa6c4fad319a909800403af2c43"
+    },
+    {
+      "path": "templates/devtools/npmrc",
+      "size": 638,
+      "sha256": "1b3fb92ec3997bcdae264fbdca678bb7a7cb9c9fb8667a64eef01aff59d7f0cf"
+    },
+    {
+      "path": "templates/devtools/pnpm.config.yaml",
+      "size": 977,
+      "sha256": "fb84d0e4d1b06efd7c42d4ea8c7488c15b0de4d82bab133e7af525712e52ae6c"
+    },
+    {
+      "path": "templates/vicinae/99-vicinae-cosmic.conf",
+      "size": 148,
+      "sha256": "c8cad4d9d8e9eb01b6dba238cba2ae5652f3165ac6c57b165de9d79be74ef677"
+    },
+    {
+      "path": "templates/vicinae/cosmic-shortcuts-custom",
+      "size": 503,
+      "sha256": "a07dd7f6b13977153aeb539fafaaf39adf9be3a8032eb8723068fe2bb4e59eb2"
     }
   ]
 }
