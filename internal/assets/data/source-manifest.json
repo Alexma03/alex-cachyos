@@ -8,8 +8,8 @@
     },
     {
       "path": "catalog/schema/catalog-v1.schema.json",
-      "size": 1226,
-      "sha256": "ed5ce2d277cb150c954b34748defa8664d4890c5db4d483bde11ea896e70a1d4"
+      "size": 3086,
+      "sha256": "a5c7cb49845985b1a22f378942ddd13bdf9a706f76a615f4bb985662fda6a2c1"
     }
   ]
 }

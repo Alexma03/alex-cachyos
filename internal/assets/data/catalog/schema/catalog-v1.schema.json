@@ -30,6 +30,78 @@
         "type": "string"
       }
     },
+    "pins": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "npm": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "pacmanArtifacts": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["package", "version", "source", "sha256"],
+            "additionalProperties": false,
+            "properties": {
+              "package": {
+                "type": "string"
+              },
+              "version": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              },
+              "sha256": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "aurLocal": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["sourceCommit", "patchSHA256"],
+            "additionalProperties": false,
+            "properties": {
+              "sourceCommit": {
+                "type": "string"
+              },
+              "patchSHA256": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "remoteArtifacts": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["url", "sha256"],
+            "additionalProperties": false,
+            "properties": {
+              "url": {
+                "type": "string"
+              },
+              "sha256": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "localPathPackages": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "checkoutPins": {
       "type": "object",
       "additionalProperties": {
