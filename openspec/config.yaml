@@ -1,0 +1,112 @@
+# OpenSpec project context for alex-cachyos.
+schema: spec-driven
+
+strict_tdd: false
+
+context: |
+  Project: alex-cachyos is a private, single-maintainer, reproducible personal
+  CachyOS configurator. The initial platform scope is CachyOS Linux with the
+  Wayland-native niri compositor and Noctalia shell/greeter.
+
+  Current repository: the checked-in implementation is a Bash CLI (`./apply`)
+  with JSON machine profiles, ordered shell modules, local PKGBUILDs, system
+  overlays, user templates, and operational documentation. The current default
+  profile is `galaxy`; current modules include bootstrap, fingerprint, devtools,
+  apps, vicinae, desktop, and verify. Python is used for profile JSON parsing
+  and small validation helpers. System changes use CachyOS/Arch tooling,
+  systemd, and pkexec from a normal-user invocation.
+
+  Target architecture already selected for the configurator: a Go CLI with a
+  declarative catalog, global -> role -> host profile precedence, a shared
+  planner, embedded assets, Git-tag checkpoints, detect-and-adopt behavior,
+  local receipts, and no biometric data. The repository does not yet contain a
+  Go module or the target implementation; later SDD phases must distinguish
+  current Bash behavior from the planned Go design rather than assuming that
+  implementation exists.
+
+  Expanded product scope: reproduce the user's Pi/Gentle AI development
+  environment across machines, including source checkouts for development
+  branches, Pi package installation, global prompts and configuration, 23
+  subagent profiles, model routing, receipt-driven development (RDD), web
+  research tooling, safe credential references, interactive OAuth logins, and a
+  temporary sdd-research override with a retirement condition after official
+  support lands. Credential values and biometric data must never be cataloged,
+  embedded, or written to receipts; authentication remains interactive or
+  reference-based.
+
+  Repository conventions: preserve idempotent module behavior, profile-driven
+  activation, explicit package ownership, backup/restore conventions for
+  managed files, and the existing niri + Noctalia-only desktop boundary. Keep
+  all pre-existing dirty-worktree changes intact. Default technical OpenSpec
+  artifacts to English, even though the current README and some documentation
+  contain Spanish text.
+
+  Testing capability detected during initialization: no test files, dedicated
+  test framework, Makefile, Taskfile, package manifest, Go module, CI test
+  command, or end-to-end harness was found. The available repository-wide
+  validation is Bash syntax checking plus JSON profile parsing. `shellcheck`
+  and `shfmt` are not installed. Strict TDD therefore remains disabled until a
+  real repository-wide test runner is added; future Go implementation work
+  should update this configuration when unit/integration coverage exists.
+
+rules:
+  proposal:
+    require_problem_statement: true
+    require_scope_and_non_goals: true
+    require_rollback_for_system_changes: true
+  spec:
+    require_acceptance_criteria: true
+    scenario_format: Given/When/Then
+    normative_language: RFC 2119 keywords where requirements are normative
+  design:
+    require_tradeoffs: true
+    preserve_selected_architecture: true
+  tasks:
+    protect_review_workload: true
+    grouping: infrastructure, catalog, planner, installation, and verification
+  apply:
+    preserve_dirty_worktree: true
+    no_out_of_scope_mutations: true
+    test_command: >-
+      bash -n apply bin/alex-cachyos-webapp-launch lib/*.sh modules/*.sh
+  verify:
+    test_command: >-
+      bash -n apply bin/alex-cachyos-webapp-launch lib/*.sh modules/*.sh &&
+      python3 -c 'import json; from pathlib import Path; [json.load(p.open()) for p in Path("profiles").glob("*.json")]'
+    build_command: ""
+    coverage_threshold: 0
+  archive:
+    warn_before_destructive_deltas: true
+
+testing:
+  strict_tdd: false
+  detected: "2026-08-29"
+  runner:
+    command: >-
+      bash -n apply bin/alex-cachyos-webapp-launch lib/*.sh modules/*.sh &&
+      python3 -c 'import json; from pathlib import Path; [json.load(p.open()) for p in Path("profiles").glob("*.json")]'
+    framework: "Bash syntax validation and Python stdlib JSON parsing"
+  layers:
+    unit: "not available; no unit-test files or harness discovered"
+    integration: "not available; no integration harness discovered"
+    e2e: "not available; no end-to-end harness discovered"
+  commands:
+    syntax:
+      - scope: "."
+        command: "bash -n apply bin/alex-cachyos-webapp-launch lib/*.sh modules/*.sh"
+        framework: "bash"
+    profile_json:
+      - scope: "profiles/*.json"
+        command: "python3 -c 'import json; from pathlib import Path; [json.load(p.open()) for p in Path(\"profiles\").glob(\"*.json\")]'"
+        framework: "Python json module"
+  coverage:
+    command: ""
+    commands: []
+
+quality:
+  lint: "unavailable; shellcheck is not installed"
+  lint_commands: []
+  typecheck: "not applicable to the current Bash/Python repository"
+  typecheck_commands: []
+  format: "unavailable; shfmt is not installed"
+  format_commands: []
