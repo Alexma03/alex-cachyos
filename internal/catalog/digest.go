@@ -51,6 +51,13 @@ func Normalize(catalog Catalog) ([]byte, error) {
 			return nil, err
 		}
 	}
+	if catalog.Pins != nil {
+		if err := writeCatalogField(&normalized, &first, "pins", func(value *bytes.Buffer) error {
+			return writePins(value, catalog.Pins)
+		}); err != nil {
+			return nil, err
+		}
+	}
 	if catalog.CheckoutPins != nil {
 		if err := writeCatalogField(&normalized, &first, "checkoutPins", func(value *bytes.Buffer) error {
 			return writeCheckoutPins(value, catalog.CheckoutPins)
@@ -127,6 +134,222 @@ func writeStringSlice(buffer *bytes.Buffer, values []string) error {
 		}
 	}
 	buffer.WriteByte(']')
+	return nil
+}
+
+func writePins(buffer *bytes.Buffer, pins *Pins) error {
+	buffer.WriteByte('{')
+	first := true
+
+	if pins.NPM != nil {
+		if err := writeCatalogField(buffer, &first, "npm", func(value *bytes.Buffer) error {
+			return writeStringMap(value, pins.NPM)
+		}); err != nil {
+			return err
+		}
+	}
+	if pins.PacmanArtifacts != nil {
+		if err := writeCatalogField(buffer, &first, "pacmanArtifacts", func(value *bytes.Buffer) error {
+			return writePacmanArtifactPins(value, pins.PacmanArtifacts)
+		}); err != nil {
+			return err
+		}
+	}
+	if pins.AURLocal != nil {
+		if err := writeCatalogField(buffer, &first, "aurLocal", func(value *bytes.Buffer) error {
+			return writeAURLocalPins(value, pins.AURLocal)
+		}); err != nil {
+			return err
+		}
+	}
+	if pins.RemoteArtifacts != nil {
+		if err := writeCatalogField(buffer, &first, "remoteArtifacts", func(value *bytes.Buffer) error {
+			return writeRemoteArtifactPins(value, pins.RemoteArtifacts)
+		}); err != nil {
+			return err
+		}
+	}
+	if pins.LocalPathPackages != nil {
+		if err := writeCatalogField(buffer, &first, "localPathPackages", func(value *bytes.Buffer) error {
+			return writeStringMap(value, pins.LocalPathPackages)
+		}); err != nil {
+			return err
+		}
+	}
+
+	buffer.WriteByte('}')
+	return nil
+}
+
+func writeStringMap(buffer *bytes.Buffer, values map[string]string) error {
+	buffer.WriteByte('{')
+	names := make([]string, 0, len(values))
+	for name := range values {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for i, name := range names {
+		if i != 0 {
+			buffer.WriteByte(',')
+		}
+		if err := writeJSONString(buffer, name); err != nil {
+			return err
+		}
+		buffer.WriteByte(':')
+		if err := writeJSONString(buffer, values[name]); err != nil {
+			return err
+		}
+	}
+	buffer.WriteByte('}')
+	return nil
+}
+
+func writePacmanArtifactPins(buffer *bytes.Buffer, pins map[string]PacmanArtifactPin) error {
+	buffer.WriteByte('{')
+	names := make([]string, 0, len(pins))
+	for name := range pins {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for i, name := range names {
+		if i != 0 {
+			buffer.WriteByte(',')
+		}
+		if err := writeJSONString(buffer, name); err != nil {
+			return err
+		}
+		buffer.WriteByte(':')
+		if err := writePacmanArtifactPin(buffer, pins[name]); err != nil {
+			return err
+		}
+	}
+	buffer.WriteByte('}')
+	return nil
+}
+
+func writePacmanArtifactPin(buffer *bytes.Buffer, pin PacmanArtifactPin) error {
+	buffer.WriteByte('{')
+	first := true
+	for _, field := range []struct {
+		name  string
+		value string
+	}{
+		{name: "package", value: pin.Package},
+		{name: "version", value: pin.Version},
+		{name: "source", value: string(pin.Source)},
+		{name: "sha256", value: pin.SHA256},
+	} {
+		if !first {
+			buffer.WriteByte(',')
+		}
+		first = false
+		if err := writeJSONString(buffer, field.name); err != nil {
+			return err
+		}
+		buffer.WriteByte(':')
+		if err := writeJSONString(buffer, field.value); err != nil {
+			return err
+		}
+	}
+	buffer.WriteByte('}')
+	return nil
+}
+
+func writeAURLocalPins(buffer *bytes.Buffer, pins map[string]AURLocalPin) error {
+	buffer.WriteByte('{')
+	names := make([]string, 0, len(pins))
+	for name := range pins {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for i, name := range names {
+		if i != 0 {
+			buffer.WriteByte(',')
+		}
+		if err := writeJSONString(buffer, name); err != nil {
+			return err
+		}
+		buffer.WriteByte(':')
+		if err := writeAURLocalPin(buffer, pins[name]); err != nil {
+			return err
+		}
+	}
+	buffer.WriteByte('}')
+	return nil
+}
+
+func writeAURLocalPin(buffer *bytes.Buffer, pin AURLocalPin) error {
+	buffer.WriteByte('{')
+	first := true
+	for _, field := range []struct {
+		name  string
+		value string
+	}{
+		{name: "sourceCommit", value: pin.SourceCommit},
+		{name: "patchSHA256", value: pin.PatchSHA256},
+	} {
+		if !first {
+			buffer.WriteByte(',')
+		}
+		first = false
+		if err := writeJSONString(buffer, field.name); err != nil {
+			return err
+		}
+		buffer.WriteByte(':')
+		if err := writeJSONString(buffer, field.value); err != nil {
+			return err
+		}
+	}
+	buffer.WriteByte('}')
+	return nil
+}
+
+func writeRemoteArtifactPins(buffer *bytes.Buffer, pins map[string]RemoteArtifactPin) error {
+	buffer.WriteByte('{')
+	names := make([]string, 0, len(pins))
+	for name := range pins {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for i, name := range names {
+		if i != 0 {
+			buffer.WriteByte(',')
+		}
+		if err := writeJSONString(buffer, name); err != nil {
+			return err
+		}
+		buffer.WriteByte(':')
+		if err := writeRemoteArtifactPin(buffer, pins[name]); err != nil {
+			return err
+		}
+	}
+	buffer.WriteByte('}')
+	return nil
+}
+
+func writeRemoteArtifactPin(buffer *bytes.Buffer, pin RemoteArtifactPin) error {
+	buffer.WriteByte('{')
+	first := true
+	for _, field := range []struct {
+		name  string
+		value string
+	}{
+		{name: "url", value: pin.URL},
+		{name: "sha256", value: pin.SHA256},
+	} {
+		if !first {
+			buffer.WriteByte(',')
+		}
+		first = false
+		if err := writeJSONString(buffer, field.name); err != nil {
+			return err
+		}
+		buffer.WriteByte(':')
+		if err := writeJSONString(buffer, field.value); err != nil {
+			return err
+		}
+	}
+	buffer.WriteByte('}')
 	return nil
 }
 

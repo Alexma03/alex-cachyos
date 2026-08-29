@@ -152,3 +152,144 @@ func checkoutPinsInOrder(names []string, pins []CheckoutPin) map[string]Checkout
 	}
 	return checkoutPins
 }
+
+func TestNormalizeCanonicalizesSourcePins(t *testing.T) {
+	sha := strings.Repeat("a", 64)
+	commit := strings.Repeat("b", 40)
+	patch := strings.Repeat("c", 64)
+	remoteSHA := strings.Repeat("d", 64)
+
+	first := Catalog{
+		CatalogVersion: 1,
+		Kind:           KindHost,
+		Pins: &Pins{
+			NPM: map[string]string{
+				"zeta":  "npm:zeta@1.0.0",
+				"alpha": "npm:alpha@2.0.0",
+			},
+			PacmanArtifacts: map[string]PacmanArtifactPin{
+				"two": {Package: "package-two", Version: "2.0.0-1", Source: PacmanArtifactArchive, SHA256: sha},
+				"one": {Package: "package-one", Version: "1.0.0-1", Source: PacmanArtifactCache, SHA256: sha},
+			},
+			AURLocal: map[string]AURLocalPin{
+				"driver": {SourceCommit: commit, PatchSHA256: patch},
+			},
+			RemoteArtifacts: map[string]RemoteArtifactPin{
+				"tool": {URL: "https://downloads.example.invalid/tool.tar.zst", SHA256: remoteSHA},
+			},
+			LocalPathPackages: map[string]string{
+				"gentle-pi": "../../Projects/gentle-pi",
+			},
+		},
+	}
+	second := Catalog{
+		CatalogVersion: 1,
+		Kind:           KindHost,
+		Pins: &Pins{
+			NPM: map[string]string{
+				"alpha": "npm:alpha@2.0.0",
+				"zeta":  "npm:zeta@1.0.0",
+			},
+			PacmanArtifacts: map[string]PacmanArtifactPin{
+				"one": {Package: "package-one", Version: "1.0.0-1", Source: PacmanArtifactCache, SHA256: sha},
+				"two": {Package: "package-two", Version: "2.0.0-1", Source: PacmanArtifactArchive, SHA256: sha},
+			},
+			AURLocal: map[string]AURLocalPin{
+				"driver": {SourceCommit: commit, PatchSHA256: patch},
+			},
+			RemoteArtifacts: map[string]RemoteArtifactPin{
+				"tool": {URL: "https://downloads.example.invalid/tool.tar.zst", SHA256: remoteSHA},
+			},
+			LocalPathPackages: map[string]string{
+				"gentle-pi": "../../Projects/gentle-pi",
+			},
+		},
+	}
+
+	want := `{"catalogVersion":1,"kind":"Host","pins":{"npm":{"alpha":"npm:alpha@2.0.0","zeta":"npm:zeta@1.0.0"},"pacmanArtifacts":{"one":{"package":"package-one","version":"1.0.0-1","source":"cache","sha256":"` + sha + `"},"two":{"package":"package-two","version":"2.0.0-1","source":"archive","sha256":"` + sha + `"}},"aurLocal":{"driver":{"sourceCommit":"` + commit + `","patchSHA256":"` + patch + `"}},"remoteArtifacts":{"tool":{"url":"https://downloads.example.invalid/tool.tar.zst","sha256":"` + remoteSHA + `"}},"localPathPackages":{"gentle-pi":"../../Projects/gentle-pi"}}}
+`
+
+	firstBytes, err := Normalize(first)
+	if err != nil {
+		t.Fatalf("normalize first catalog: %v", err)
+	}
+	if string(firstBytes) != want {
+		t.Fatalf("normalized first catalog = %q, want %q", firstBytes, want)
+	}
+	secondBytes, err := Normalize(second)
+	if err != nil {
+		t.Fatalf("normalize second catalog: %v", err)
+	}
+	if string(secondBytes) != want {
+		t.Fatalf("normalized second catalog = %q, want %q", secondBytes, want)
+	}
+}
+
+func TestNormalizePreservesSourcePinPresence(t *testing.T) {
+	emptyPins, err := Normalize(Catalog{CatalogVersion: 1, Kind: KindGlobal, Pins: &Pins{}})
+	if err != nil {
+		t.Fatalf("normalize empty pins: %v", err)
+	}
+	if got, want := string(emptyPins), "{\"catalogVersion\":1,\"kind\":\"Global\",\"pins\":{}}\n"; got != want {
+		t.Fatalf("normalized empty pins = %q, want %q", got, want)
+	}
+
+	emptyNPM, err := Normalize(Catalog{
+		CatalogVersion: 1,
+		Kind:           KindGlobal,
+		Pins:           &Pins{NPM: map[string]string{}},
+	})
+	if err != nil {
+		t.Fatalf("normalize empty npm source: %v", err)
+	}
+	if got, want := string(emptyNPM), "{\"catalogVersion\":1,\"kind\":\"Global\",\"pins\":{\"npm\":{}}}\n"; got != want {
+		t.Fatalf("normalized empty npm source = %q, want %q", got, want)
+	}
+}
+
+func TestDigestChangesForSourcePinContentAndPresence(t *testing.T) {
+	catalog := Catalog{CatalogVersion: 1, Kind: KindGlobal}
+	base, err := Digest(catalog)
+	if err != nil {
+		t.Fatalf("digest base catalog: %v", err)
+	}
+
+	withPins := catalog
+	withPins.Pins = &Pins{NPM: map[string]string{"provider": "npm:@scope/provider@1.2.3"}}
+	pinsDigest, err := Digest(withPins)
+	if err != nil {
+		t.Fatalf("digest catalog with pins: %v", err)
+	}
+	if pinsDigest == base {
+		t.Fatal("adding pins did not change digest")
+	}
+
+	contentChange := catalog
+	contentChange.Pins = &Pins{NPM: map[string]string{"provider": "npm:@scope/provider@1.2.4"}}
+	changedDigest, err := Digest(contentChange)
+	if err != nil {
+		t.Fatalf("digest catalog with changed pin: %v", err)
+	}
+	if changedDigest == pinsDigest {
+		t.Fatal("pin content change did not change digest")
+	}
+}
+
+func TestNormalizeDoesNotMutateSourcePins(t *testing.T) {
+	pins := &Pins{
+		NPM:               map[string]string{"z": "npm:z@1.0.0", "a": "npm:a@2.0.0"},
+		LocalPathPackages: map[string]string{"gentle-pi": "../../Projects/gentle-pi"},
+	}
+	catalog := Catalog{CatalogVersion: 1, Kind: KindGlobal, Pins: pins}
+
+	if _, err := Normalize(catalog); err != nil {
+		t.Fatalf("normalize catalog: %v", err)
+	}
+
+	if len(pins.NPM) != 2 || pins.NPM["z"] != "npm:z@1.0.0" || pins.NPM["a"] != "npm:a@2.0.0" {
+		t.Fatalf("normalize mutated npm pins: %#v", pins.NPM)
+	}
+	if len(pins.LocalPathPackages) != 1 || pins.LocalPathPackages["gentle-pi"] != "../../Projects/gentle-pi" {
+		t.Fatalf("normalize mutated local path packages: %#v", pins.LocalPathPackages)
+	}
+}
