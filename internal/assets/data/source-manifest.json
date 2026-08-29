@@ -5,6 +5,11 @@
       "path": "catalog/.gitkeep",
       "size": 0,
       "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "catalog/schema/catalog-v1.schema.json",
+      "size": 1226,
+      "sha256": "ed5ce2d277cb150c954b34748defa8664d4890c5db4d483bde11ea896e70a1d4"
     }
   ]
 }

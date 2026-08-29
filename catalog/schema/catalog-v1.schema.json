@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://alex-cachyos.dev/schema/catalog-v1.schema.json",
+  "title": "alex-cachyos catalog v1",
+  "type": "object",
+  "required": ["catalogVersion", "kind"],
+  "additionalProperties": false,
+  "properties": {
+    "catalogVersion": {
+      "const": 1
+    },
+    "kind": {
+      "enum": ["Global", "Role", "Host"]
+    },
+    "modules": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "boolean"
+      }
+    },
+    "templates": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "overlays": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "checkoutPins": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["remote", "branch", "commit"],
+        "additionalProperties": false,
+        "properties": {
+          "remote": {
+            "type": "string",
+            "minLength": 1
+          },
+          "branch": {
+            "type": "string",
+            "minLength": 1
+          },
+          "commit": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}
