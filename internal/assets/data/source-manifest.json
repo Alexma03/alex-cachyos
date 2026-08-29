@@ -17,6 +17,46 @@
       "sha256": "a5c7cb49845985b1a22f378942ddd13bdf9a706f76a615f4bb985662fda6a2c1"
     },
     {
+      "path": "overlays/galaxy/etc/greetd/cosmic-greeter.toml",
+      "size": 258,
+      "sha256": "d8b6d879c3c9fb6c8ae4ccb0a60b27796e722a941ac9bcc86227ac1f8ed118c2"
+    },
+    {
+      "path": "overlays/galaxy/etc/pam.d/cosmic-greeter",
+      "size": 362,
+      "sha256": "70f95977e90f1d7ec91ba543241aa2dbcddbe80f90cb9a35dc7f4eb1418b3b1c"
+    },
+    {
+      "path": "overlays/galaxy/etc/pam.d/greetd",
+      "size": 278,
+      "sha256": "24d45e1167d13469778a4f0fc48d67d814e57f26147c7100b1e2a33748585fa2"
+    },
+    {
+      "path": "overlays/galaxy/etc/pam.d/polkit-1",
+      "size": 201,
+      "sha256": "d3dda6b4532a13ff956063fa87c8b5180a31daf27eaa7ae91b29a15a2ca3844e"
+    },
+    {
+      "path": "overlays/galaxy/etc/pam.d/su",
+      "size": 213,
+      "sha256": "825c9341df5669b487e540ef2dd1f83a6ad69dfc455cdd5ccae24903bb5f29b5"
+    },
+    {
+      "path": "overlays/galaxy/etc/pam.d/su-l",
+      "size": 213,
+      "sha256": "825c9341df5669b487e540ef2dd1f83a6ad69dfc455cdd5ccae24903bb5f29b5"
+    },
+    {
+      "path": "overlays/galaxy/etc/pam.d/sudo",
+      "size": 214,
+      "sha256": "90761aac0a0e09d09a0892ab1d3ca415a0a4efbadf4981f75c46eb1376337089"
+    },
+    {
+      "path": "overlays/galaxy/etc/pam.d/system-local-login",
+      "size": 205,
+      "sha256": "6dc91553f5900f59c9620c64e78ef11c19c1e351c60e6956018280406dd9d735"
+    },
+    {
       "path": "packaging/libfprint-egismoc-sdcp-git/0001-egismoc-drop-sdcp-claim-on-close.patch",
       "size": 1933,
       "sha256": "dd248cb9225857385f32ce36da887cb039d5ec7bffd54f412a790e898349d03d"
@@ -47,6 +87,21 @@
       "sha256": "f77b7bded41bcbaadfae766e878174d3a678cd3a63a70a6f5bc071455ee1f95f"
     },
     {
+      "path": "templates/bootstrap/packages.remove",
+      "size": 1070,
+      "sha256": "224588b08979c011e255142721d87f94733fbda91d035a81add1e988f803c111"
+    },
+    {
+      "path": "templates/bootstrap/packages.want",
+      "size": 147,
+      "sha256": "d85d5e7e3e0ffe9fa33b0d2ce00b1440bceebe9a82bbac1502830490cd255326"
+    },
+    {
+      "path": "templates/desktop/packages.pacman",
+      "size": 260,
+      "sha256": "bc202ac06acc72eb44ad656d52e5269bfe1d8f827fff463d846d404d6d131605"
+    },
+    {
       "path": "templates/devtools/mise.config.toml",
       "size": 218,
       "sha256": "e32f50cc83c015c3dfd11850222150d298f67fa6c4fad319a909800403af2c43"
@@ -60,6 +115,31 @@
       "path": "templates/devtools/pnpm.config.yaml",
       "size": 977,
       "sha256": "fb84d0e4d1b06efd7c42d4ea8c7488c15b0de4d82bab133e7af525712e52ae6c"
+    },
+    {
+      "path": "templates/hyprwhspr/config.json",
+      "size": 353,
+      "sha256": "49691698177d5dd7ee0ec315e3389472f8f707bd1b6307b29a87134b14be2f42"
+    },
+    {
+      "path": "templates/niri/config.kdl",
+      "size": 25709,
+      "sha256": "9ce9dde1aa48c3364b54b12f6f65f8200792e6d21e02df7d161d584dd9195ec9"
+    },
+    {
+      "path": "templates/noctalia/settings.toml",
+      "size": 5361,
+      "sha256": "05caeec9411add669688b58f96ecd251f7a83c2d6d1d7b078027264bfd002719"
+    },
+    {
+      "path": "templates/quickshell-polkit/PolkitModel.js",
+      "size": 618,
+      "sha256": "3f1a3896c80014fcb2a4d0fd22e3284375cd09a3cfa30e0fae53305aa3893592"
+    },
+    {
+      "path": "templates/quickshell-polkit/shell.qml",
+      "size": 9504,
+      "sha256": "f47d64af6773679a9347f6cc2d81cb677fd077c1b2cf716a5dda4a504a50ac55"
     },
     {
       "path": "templates/vicinae/99-vicinae-cosmic.conf",

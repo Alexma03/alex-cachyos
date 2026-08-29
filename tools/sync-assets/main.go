@@ -35,10 +35,17 @@ type declaredAsset struct {
 var declaredAssets = []declaredAsset{
 	{path: "bin/alex-cachyos-webapp-launch", mode: assetCopied},
 	{path: "catalog/", mode: assetCopied},
+	{path: "overlays/galaxy/", mode: assetEmbedded},
 	{path: "packaging/", mode: assetCopied},
-	{path: "templates/apps/", mode: assetCopied},
-	{path: "templates/devtools/", mode: assetCopied},
-	{path: "templates/vicinae/", mode: assetCopied},
+	{path: "templates/apps/", mode: assetEmbedded},
+	{path: "templates/bootstrap/", mode: assetEmbedded},
+	{path: "templates/desktop/", mode: assetEmbedded},
+	{path: "templates/devtools/", mode: assetEmbedded},
+	{path: "templates/hyprwhspr/", mode: assetEmbedded},
+	{path: "templates/niri/", mode: assetEmbedded},
+	{path: "templates/noctalia/", mode: assetEmbedded},
+	{path: "templates/quickshell-polkit/", mode: assetEmbedded},
+	{path: "templates/vicinae/", mode: assetEmbedded},
 }
 
 type manifest struct {

@@ -16,9 +16,16 @@ func assetFixture(t *testing.T) string {
 	root := t.TempDir()
 	for _, dir := range []string{
 		filepath.Join("catalog", "nested"),
+		filepath.Join("overlays", "galaxy", "etc", "pam.d"),
 		filepath.Join("packaging", "libfprint-egismoc-sdcp-git", "patches"),
-		filepath.Join("templates", "devtools"),
 		filepath.Join("templates", "apps"),
+		filepath.Join("templates", "bootstrap"),
+		filepath.Join("templates", "desktop"),
+		filepath.Join("templates", "devtools"),
+		filepath.Join("templates", "hyprwhspr"),
+		filepath.Join("templates", "niri"),
+		filepath.Join("templates", "noctalia"),
+		filepath.Join("templates", "quickshell-polkit"),
 		filepath.Join("templates", "vicinae"),
 		"bin",
 	} {
@@ -30,19 +37,28 @@ func assetFixture(t *testing.T) string {
 	for name, data := range map[string][]byte{
 		"catalog/declared.txt":                          []byte("declared\n"),
 		"catalog/nested/asset.bin":                      {0, 1, 2, 255},
+		"overlays/galaxy/etc/pam.d/greetd":              []byte("auth required pam_unix.so\n"),
 		"packaging/libfprint-egismoc-sdcp-git/PKGBUILD": []byte("pkgname=example\n"),
 		"packaging/libfprint-egismoc-sdcp-git/0001-egismoc-drop-sdcp-claim-on-close.patch":         patch,
 		"packaging/libfprint-egismoc-sdcp-git/patches/0001-egismoc-drop-sdcp-claim-on-close.patch": patch,
-		"templates/devtools/mise.config.toml":                                                      []byte("[tools]\nnode = \"lts\"\n"),
-		"templates/devtools/npmrc":                                                                 []byte("min-release-age=3\n"),
-		"templates/devtools/pnpm.config.yaml":                                                      []byte("minimumReleaseAge: 4320\n"),
-		"templates/apps/packages.aur":                                                              []byte("warp-terminal-bin\n"),
-		"templates/apps/packages.pacman":                                                           []byte("cursor-bin\n"),
-		"templates/apps/webapps.list":                                                              []byte("WhatsApp|https://web.whatsapp.com|icon\n"),
-		"templates/vicinae/99-vicinae-cosmic.conf":                                                 []byte("COSMIC_DATA_CONTROL_ENABLED=1\n"),
-		"templates/vicinae/cosmic-shortcuts-custom":                                                []byte("(modifiers: [Super],): Disable\n"),
-		"bin/alex-cachyos-webapp-launch":                                                           []byte("#!/usr/bin/env bash\n"),
-		"not-declared.txt":                                                                         []byte("outside\n"),
+		"templates/apps/packages.aur":                []byte("warp-terminal-bin\n"),
+		"templates/apps/packages.pacman":             []byte("cursor-bin\n"),
+		"templates/apps/webapps.list":                []byte("WhatsApp|https://web.whatsapp.com|icon\n"),
+		"templates/bootstrap/packages.remove":        []byte("old-package\n"),
+		"templates/bootstrap/packages.want":          []byte("new-package\n"),
+		"templates/desktop/packages.pacman":          []byte("niri\n"),
+		"templates/devtools/mise.config.toml":        []byte("[tools]\nnode = \"lts\"\n"),
+		"templates/devtools/npmrc":                   []byte("min-release-age=3\n"),
+		"templates/devtools/pnpm.config.yaml":        []byte("minimumReleaseAge: 4320\n"),
+		"templates/hyprwhspr/config.json":            []byte("{}\n"),
+		"templates/niri/config.kdl":                  []byte("input {}\n"),
+		"templates/noctalia/settings.toml":           []byte("[settings]\n"),
+		"templates/quickshell-polkit/PolkitModel.js": []byte("export default {}\n"),
+		"templates/quickshell-polkit/shell.qml":      []byte("Item {}\n"),
+		"templates/vicinae/99-vicinae-cosmic.conf":   []byte("COSMIC_DATA_CONTROL_ENABLED=1\n"),
+		"templates/vicinae/cosmic-shortcuts-custom":  []byte("(modifiers: [Super],): Disable\n"),
+		"bin/alex-cachyos-webapp-launch":             []byte("#!/usr/bin/env bash\n"),
+		"not-declared.txt":                           []byte("outside\n"),
 	} {
 		if err := os.WriteFile(filepath.Join(root, name), data, 0o644); err != nil {
 			t.Fatal(err)
@@ -82,15 +98,24 @@ func TestSyncWritesManifestAndOnlyDeclaredAssets(t *testing.T) {
 		"bin/alex-cachyos-webapp-launch",
 		"catalog/declared.txt",
 		"catalog/nested/asset.bin",
+		"overlays/galaxy/etc/pam.d/greetd",
 		"packaging/libfprint-egismoc-sdcp-git/0001-egismoc-drop-sdcp-claim-on-close.patch",
 		"packaging/libfprint-egismoc-sdcp-git/PKGBUILD",
 		"packaging/libfprint-egismoc-sdcp-git/patches/0001-egismoc-drop-sdcp-claim-on-close.patch",
 		"templates/apps/packages.aur",
 		"templates/apps/packages.pacman",
 		"templates/apps/webapps.list",
+		"templates/bootstrap/packages.remove",
+		"templates/bootstrap/packages.want",
+		"templates/desktop/packages.pacman",
 		"templates/devtools/mise.config.toml",
 		"templates/devtools/npmrc",
 		"templates/devtools/pnpm.config.yaml",
+		"templates/hyprwhspr/config.json",
+		"templates/niri/config.kdl",
+		"templates/noctalia/settings.toml",
+		"templates/quickshell-polkit/PolkitModel.js",
+		"templates/quickshell-polkit/shell.qml",
 		"templates/vicinae/99-vicinae-cosmic.conf",
 		"templates/vicinae/cosmic-shortcuts-custom",
 	}
@@ -175,14 +200,22 @@ func TestSyncEmbedsPackagingAssets(t *testing.T) {
 
 func TestSyncEmbedsDevtoolsAppsVicinaeLauncher(t *testing.T) {
 	root, dest := syncedFixture(t)
-	rels := []string{
-		"bin/alex-cachyos-webapp-launch",
+	copied := "bin/alex-cachyos-webapp-launch"
+	embedded := []string{
 		"templates/apps/packages.aur",
 		"templates/apps/packages.pacman",
 		"templates/apps/webapps.list",
+		"templates/bootstrap/packages.remove",
+		"templates/bootstrap/packages.want",
+		"templates/desktop/packages.pacman",
 		"templates/devtools/mise.config.toml",
 		"templates/devtools/npmrc",
 		"templates/devtools/pnpm.config.yaml",
+		"templates/hyprwhspr/config.json",
+		"templates/niri/config.kdl",
+		"templates/noctalia/settings.toml",
+		"templates/quickshell-polkit/PolkitModel.js",
+		"templates/quickshell-polkit/shell.qml",
 		"templates/vicinae/99-vicinae-cosmic.conf",
 		"templates/vicinae/cosmic-shortcuts-custom",
 	}
@@ -200,7 +233,7 @@ func TestSyncEmbedsDevtoolsAppsVicinaeLauncher(t *testing.T) {
 		byPath[e.Path]++
 		entryByPath[e.Path] = e
 	}
-	for _, rel := range rels {
+	for _, rel := range append([]string{copied}, embedded...) {
 		if byPath[rel] != 1 {
 			t.Fatalf("manifest has %d entries for %q, want exactly one", byPath[rel], rel)
 		}
@@ -208,17 +241,23 @@ func TestSyncEmbedsDevtoolsAppsVicinaeLauncher(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		cp, err := os.ReadFile(filepath.Join(dest, rel))
-		if err != nil {
-			t.Fatalf("generated asset %s missing: %v", rel, err)
-		}
-		if !bytes.Equal(src, cp) {
-			t.Fatalf("generated asset %s drifted from source", rel)
-		}
 		sum := sha256.Sum256(src)
 		e := entryByPath[rel]
 		if e.Size != int64(len(src)) || e.SHA256 != hex.EncodeToString(sum[:]) {
 			t.Fatalf("manifest entry mismatch for %s: %#v", rel, e)
+		}
+		if rel == copied {
+			cp, err := os.ReadFile(filepath.Join(dest, rel))
+			if err != nil {
+				t.Fatalf("generated copied asset %s missing: %v", rel, err)
+			}
+			if !bytes.Equal(src, cp) {
+				t.Fatalf("generated copied asset %s drifted from source", rel)
+			}
+			continue
+		}
+		if _, err := os.Lstat(filepath.Join(dest, rel)); !os.IsNotExist(err) {
+			t.Fatalf("embedded asset %s was copied: %v", rel, err)
 		}
 	}
 }
