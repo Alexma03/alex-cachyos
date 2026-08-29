@@ -1,24 +1,35 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
 func assetFixture(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, "catalog", "nested"), 0o755); err != nil {
-		t.Fatal(err)
+	for _, dir := range []string{
+		filepath.Join("catalog", "nested"),
+		filepath.Join("packaging", "libfprint-egismoc-sdcp-git", "patches"),
+	} {
+		if err := os.MkdirAll(filepath.Join(root, dir), 0o755); err != nil {
+			t.Fatal(err)
+		}
 	}
+	patch := []byte("--- a/egismoc.c\n+++ b/egismoc.c\n")
 	for name, data := range map[string][]byte{
-		"catalog/declared.txt":     []byte("declared\n"),
-		"catalog/nested/asset.bin": {0, 1, 2, 255},
-		"not-declared.txt":         []byte("outside\n"),
+		"catalog/declared.txt":                          []byte("declared\n"),
+		"catalog/nested/asset.bin":                      {0, 1, 2, 255},
+		"packaging/libfprint-egismoc-sdcp-git/PKGBUILD": []byte("pkgname=example\n"),
+		"packaging/libfprint-egismoc-sdcp-git/0001-egismoc-drop-sdcp-claim-on-close.patch":         patch,
+		"packaging/libfprint-egismoc-sdcp-git/patches/0001-egismoc-drop-sdcp-claim-on-close.patch": patch,
+		"not-declared.txt": []byte("outside\n"),
 	} {
 		if err := os.WriteFile(filepath.Join(root, name), data, 0o644); err != nil {
 			t.Fatal(err)
@@ -54,8 +65,20 @@ func TestSyncWritesManifestAndOnlyDeclaredAssets(t *testing.T) {
 	if string(b) != string(canonical) {
 		t.Fatal("manifest is not canonical JSON with one trailing newline")
 	}
-	if len(m.Entries) != 2 || m.Entries[0].Path != "catalog/declared.txt" || m.Entries[1].Path != "catalog/nested/asset.bin" {
+	want := []string{
+		"catalog/declared.txt",
+		"catalog/nested/asset.bin",
+		"packaging/libfprint-egismoc-sdcp-git/0001-egismoc-drop-sdcp-claim-on-close.patch",
+		"packaging/libfprint-egismoc-sdcp-git/PKGBUILD",
+		"packaging/libfprint-egismoc-sdcp-git/patches/0001-egismoc-drop-sdcp-claim-on-close.patch",
+	}
+	if len(m.Entries) != len(want) {
 		t.Fatalf("manifest entries = %#v", m.Entries)
+	}
+	for i, w := range want {
+		if m.Entries[i].Path != w {
+			t.Fatalf("manifest entries = %#v", m.Entries)
+		}
 	}
 	data := []byte("declared\n")
 	sum := sha256.Sum256(data)
@@ -69,6 +92,65 @@ func TestSyncWritesManifestAndOnlyDeclaredAssets(t *testing.T) {
 		t.Fatal("outside destination was accepted")
 	}
 }
+func TestSyncEmbedsPackagingAssets(t *testing.T) {
+	root, dest := syncedFixture(t)
+	base := filepath.Join(dest, "packaging", "libfprint-egismoc-sdcp-git")
+	rels := []string{
+		"PKGBUILD",
+		"0001-egismoc-drop-sdcp-claim-on-close.patch",
+		"patches/0001-egismoc-drop-sdcp-claim-on-close.patch",
+	}
+	src := make(map[string][]byte, len(rels))
+	for _, rel := range rels {
+		s, err := os.ReadFile(filepath.Join(root, "packaging", "libfprint-egismoc-sdcp-git", rel))
+		if err != nil {
+			t.Fatal(err)
+		}
+		c, err := os.ReadFile(filepath.Join(base, rel))
+		if err != nil {
+			t.Fatalf("generated packaging asset %s missing: %v", rel, err)
+		}
+		if !bytes.Equal(s, c) {
+			t.Fatalf("generated packaging asset %s drifted from source", rel)
+		}
+		src[rel] = s
+	}
+	// Both patch locations must be present and byte-identical.
+	if !bytes.Equal(src["0001-egismoc-drop-sdcp-claim-on-close.patch"], src["patches/0001-egismoc-drop-sdcp-claim-on-close.patch"]) {
+		t.Fatal("patch copies differ between the two locations")
+	}
+	// Manifest must record byte-identical hashes for each packaging copy.
+	var m manifest
+	mb, err := os.ReadFile(filepath.Join(dest, "source-manifest.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(mb, &m); err != nil {
+		t.Fatal(err)
+	}
+	seen := map[string]bool{}
+	for _, e := range m.Entries {
+		if !strings.HasPrefix(e.Path, "packaging/") {
+			continue
+		}
+		rel := strings.TrimPrefix(e.Path, "packaging/libfprint-egismoc-sdcp-git/")
+		s, ok := src[rel]
+		if !ok {
+			t.Fatalf("manifest references unexpected packaging path %q", e.Path)
+		}
+		sum := sha256.Sum256(s)
+		if e.SHA256 != hex.EncodeToString(sum[:]) || e.Size != int64(len(s)) {
+			t.Fatalf("manifest hash/size mismatch for %s: %#v", e.Path, e)
+		}
+		seen[rel] = true
+	}
+	for _, rel := range rels {
+		if !seen[rel] {
+			t.Fatalf("manifest missing packaging entry %q", rel)
+		}
+	}
+}
+
 func TestSyncRejectsDestinationSymlink(t *testing.T) {
 	root := assetFixture(t)
 	dest := filepath.Join(root, "internal", "assets", "data")

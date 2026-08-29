@@ -10,6 +10,21 @@
       "path": "catalog/schema/catalog-v1.schema.json",
       "size": 3086,
       "sha256": "a5c7cb49845985b1a22f378942ddd13bdf9a706f76a615f4bb985662fda6a2c1"
+    },
+    {
+      "path": "packaging/libfprint-egismoc-sdcp-git/0001-egismoc-drop-sdcp-claim-on-close.patch",
+      "size": 1933,
+      "sha256": "dd248cb9225857385f32ce36da887cb039d5ec7bffd54f412a790e898349d03d"
+    },
+    {
+      "path": "packaging/libfprint-egismoc-sdcp-git/PKGBUILD",
+      "size": 2057,
+      "sha256": "094cdd3f61a0227c7eec5c2426a20885a35cf2bd23e39d713e903072a02797bf"
+    },
+    {
+      "path": "packaging/libfprint-egismoc-sdcp-git/patches/0001-egismoc-drop-sdcp-claim-on-close.patch",
+      "size": 1933,
+      "sha256": "dd248cb9225857385f32ce36da887cb039d5ec7bffd54f412a790e898349d03d"
     }
   ]
 }

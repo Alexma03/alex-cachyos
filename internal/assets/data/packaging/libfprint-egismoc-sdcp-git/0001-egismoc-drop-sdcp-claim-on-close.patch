@@ -1,0 +1,42 @@
+diff --git a/libfprint/drivers/egismoc/egismoc.c b/libfprint/drivers/egismoc/egismoc.c
+index 16c656c..52b76eb 100644
+--- a/libfprint/drivers/egismoc/egismoc.c
++++ b/libfprint/drivers/egismoc/egismoc.c
+@@ -34,6 +34,7 @@
+ 
+ #include "drivers_api.h"
+ #include "fpi-byte-writer.h"
++#include "fpi-sdcp-device-private.h"
+ 
+ #include "egismoc.h"
+ 
+@@ -2382,6 +2383,14 @@ egismoc_close (FpDevice *device)
+   egismoc_cancel (device);
+   g_clear_object (&self->interrupt_cancellable);
+ 
++  /*
++   * This firmware drops the SDCP session when the USB interface is released.
++   * Keeping a "still connected" cached claim makes the next verify skip Connect
++   * and fail AuthorizedIdentity. Always start the next open with a fresh claim.
++   */
++  fpi_sdcp_device_delete_cached_claim (FPI_SDCP_DEVICE (device));
++  fpi_sdcp_set_host_keys (FPI_SDCP_DEVICE (device), NULL, NULL);
++
+   g_usb_device_release_interface (fpi_device_get_usb_device (device),
+                                   0, 0, &error);
+   fpi_device_close_complete (device, error);
+@@ -2427,10 +2436,9 @@ fpi_device_egismoc_class_init (FpiDeviceEgisMocClass *klass)
+   /* some but not all egismoc devices support reconnect; easiest to just disable for all */
+   sdcp_dev_class->supports_reconnect = FALSE;
+   /*
+-   * The 1c7a:0583 firmware stops accepting old cached claims after idle/sleep,
+-   * but a verify attempt can legitimately spend tens of seconds recovering from
+-   * blank arm interrupts and partial captures. Expire stale claims between
+-   * attempts without invalidating the active SDCP session mid-verify.
++   * Do not reuse claims across opens: egismoc_close() already drops the cached
++   * claim because the device-side SDCP session dies with the USB interface.
++   * Keep a generous in-session timeout so a single verify/enroll is not cut off.
+    */
+-  sdcp_dev_class->claim_expiration_seconds = 300;
++  sdcp_dev_class->claim_expiration_seconds = 86400;
+ }
