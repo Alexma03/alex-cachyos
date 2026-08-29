@@ -71,6 +71,7 @@ rules:
       bash -n apply bin/alex-cachyos-webapp-launch lib/*.sh modules/*.sh
   verify:
     test_command: >-
+      go test ./... &&
       bash -n apply bin/alex-cachyos-webapp-launch lib/*.sh modules/*.sh &&
       python3 -c 'import json; from pathlib import Path; [json.load(p.open()) for p in Path("profiles").glob("*.json")]'
     build_command: ""
@@ -83,9 +84,10 @@ testing:
   detected: "2026-08-29"
   runner:
     command: >-
+      go test ./... &&
       bash -n apply bin/alex-cachyos-webapp-launch lib/*.sh modules/*.sh &&
       python3 -c 'import json; from pathlib import Path; [json.load(p.open()) for p in Path("profiles").glob("*.json")]'
-    framework: "Bash syntax validation and Python stdlib JSON parsing"
+    framework: "Go unit tests plus Bash syntax validation and Python stdlib JSON parsing"
   layers:
     unit: "not available; no unit-test files or harness discovered"
     integration: "not available; no integration harness discovered"
@@ -99,6 +101,10 @@ testing:
       - scope: "profiles/*.json"
         command: "python3 -c 'import json; from pathlib import Path; [json.load(p.open()) for p in Path(\"profiles\").glob(\"*.json\")]'"
         framework: "Python json module"
+    go_test:
+      - scope: "."
+        command: "go test ./..."
+        framework: "Go testing"
   coverage:
     command: ""
     commands: []
