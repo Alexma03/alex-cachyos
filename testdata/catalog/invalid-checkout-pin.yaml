@@ -1,0 +1,6 @@
+catalogVersion: 1
+kind: Host
+checkoutPins:
+  gentle-ai:
+    remote: https://example.invalid/gentle-ai.git
+    branch: main
