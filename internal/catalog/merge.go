@@ -60,6 +60,9 @@ func MergeDocuments(documents []Document) (Catalog, error) {
 		if document.CheckoutPins != nil {
 			mergeCheckoutPins(&merged, document.CheckoutPins, &issues)
 		}
+		if document.Pins != nil {
+			mergePins(&merged, document.Pins, &issues)
+		}
 	}
 
 	if len(issues) != 0 {
@@ -67,6 +70,60 @@ func MergeDocuments(documents []Document) (Catalog, error) {
 		return Catalog{}, &CatalogValidationError{Issues: issues}
 	}
 	return merged, nil
+}
+
+// mergePins applies one document's source-specific pins. A present top-level pins
+// object establishes presence on the merged catalog; an omitted top-level object
+// inherits. Each present source map merges recursively by stable key with later
+// same-key complete value replacement, while an omitted source map inherits.
+// Explicitly empty source maps remain present but never delete inherited keys.
+// pacmanArtifacts, aurLocal, and remoteArtifacts have no merge support until
+// WU-5b3b, so any present pointer must fail closed instead of dropping data.
+func mergePins(merged *Catalog, source *PinsDocument, issues *[]ValidationError) {
+	if source == nil {
+		*issues = append(*issues, ValidationError{Path: "/pins", Message: "pin definitions are nil"})
+		return
+	}
+	if merged.Pins == nil {
+		merged.Pins = &Pins{}
+	}
+	if source.NPM != nil {
+		mergeStringPinSource(&merged.Pins.NPM, source.NPM, "npm", issues)
+	}
+	if source.LocalPathPackages != nil {
+		mergeStringPinSource(&merged.Pins.LocalPathPackages, source.LocalPathPackages, "localPathPackages", issues)
+	}
+	appendUnsupportedPinSource(issues, "pacmanArtifacts", source.PacmanArtifacts)
+	appendUnsupportedPinSource(issues, "aurLocal", source.AURLocal)
+	appendUnsupportedPinSource(issues, "remoteArtifacts", source.RemoteArtifacts)
+}
+
+// appendUnsupportedPinSource fails closed for a pin source whose merge rule is
+// not yet implemented: even an explicit empty map is present data that cannot be
+// carried into the merged catalog without silently dropping it.
+func appendUnsupportedPinSource[T any](issues *[]ValidationError, name string, source *map[string]T) {
+	if source == nil {
+		return
+	}
+	*issues = append(*issues, ValidationError{
+		Path:    childPointer("/pins", name),
+		Message: "pin source merge is not yet supported",
+	})
+}
+
+func mergeStringPinSource(destination *map[string]string, source *map[string]string, name string, issues *[]ValidationError) {
+	if *source == nil {
+		*issues = append(*issues, ValidationError{
+			Path: childPointer("/pins", name), Message: "pin definitions are nil",
+		})
+		return
+	}
+	if *destination == nil {
+		*destination = make(map[string]string)
+	}
+	for _, key := range sortedPinNames(*source) {
+		(*destination)[key] = (*source)[key]
+	}
 }
 
 func mergeCheckoutPins(merged *Catalog, source *map[string]CheckoutPinDocument, issues *[]ValidationError) {
