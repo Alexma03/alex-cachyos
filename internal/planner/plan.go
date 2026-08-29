@@ -1,6 +1,7 @@
 package planner
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"sort"
@@ -25,11 +26,63 @@ type Module struct {
 	Steps []Step
 }
 
+// Scope identifies the privilege scope required by a step.
+type Scope string
+
+const (
+	ScopeUser   Scope = "user"
+	ScopeSystem Scope = "system"
+)
+
+// NetworkClass is explicit: a step is never classified from its description or
+// any command-like text stored in its metadata.
+type NetworkClass string
+
+const (
+	NetworkNone     NetworkClass = "none"
+	NetworkRequired NetworkClass = "required"
+)
+
+// Operation identifies the typed operation a step represents.
+type Operation string
+
+// Disposition describes the planner's current treatment of a step.
+type Disposition string
+
+const (
+	DispositionSatisfied Disposition = "satisfied"
+	DispositionApply     Disposition = "apply"
+	DispositionRemove    Disposition = "remove"
+	DispositionBlocked   Disposition = "blocked"
+)
+
+// JSONValue is an opaque, JSON-safe value owned by the planner. Callers should
+// provide redacted JSON; BuildPlan copies the bytes before retaining them.
+type JSONValue = json.RawMessage
+
+type RedactedValue = JSONValue
+
+// InverseDescriptor describes the typed operation used to undo a step. Value is
+// intentionally JSON data rather than an unconstrained Go value so it can be
+// carried into later receipt and rollback work without executor coupling.
+type InverseDescriptor struct {
+	Operation Operation
+	Value     JSONValue
+}
+
 // Step is a value input and plan value.
 type Step struct {
-	ID string
-	Module string
-	DependsOn []string
+	ID          string
+	Module      string
+	DependsOn   []string
+	Description string
+	Scope       Scope
+	Network     NetworkClass
+	Operation   Operation
+	Disposition Disposition
+	Desired     RedactedValue
+	Observed    RedactedValue
+	Inverse     *InverseDescriptor
 }
 
 type Selection struct {
@@ -91,9 +144,8 @@ func copyDefinitions(inputs []Module) (map[string]Module, map[string]Step, error
 		if _, ok := modules[input.Name]; ok { return nil, nil, &DuplicateModuleError{Name: input.Name, ID: input.Name} }
 		module := Module{Name: input.Name, Enabled: input.Enabled, DependsOn: cloneStrings(input.DependsOn), Steps: make([]Step, len(input.Steps))}
 		for i, inputStep := range input.Steps {
-			stepModule := inputStep.Module
-			if stepModule == "" { stepModule = input.Name }
-			step := Step{ID: inputStep.ID, Module: stepModule, DependsOn: cloneStrings(inputStep.DependsOn)}
+			step := cloneStep(inputStep)
+			if step.Module == "" { step.Module = input.Name }
 			if _, ok := steps[step.ID]; ok { return nil, nil, &DuplicateStepError{ID: step.ID} }
 			module.Steps[i], steps[step.ID] = step, step
 		}
@@ -241,7 +293,26 @@ func contains(values []string, want string) bool { for _, value := range values 
 func cloneStrings(values []string) []string { if values == nil { return nil }; return append([]string{}, values...) }
 func cloneSelection(value Selection) Selection { return Selection{cloneStrings(value.Only), cloneStrings(value.With), cloneStrings(value.Without)} }
 func cloneSteps(values []Step) []Step {
-	if values == nil { return nil }; result := make([]Step, len(values))
-	for i, value := range values { result[i] = Step{value.ID, value.Module, cloneStrings(value.DependsOn)} }
+	if values == nil { return nil }
+	result := make([]Step, len(values))
+	for i, value := range values { result[i] = cloneStep(value) }
 	return result
+}
+
+func cloneStep(value Step) Step {
+	result := value
+	result.DependsOn = cloneStrings(value.DependsOn)
+	result.Desired = cloneJSONValue(value.Desired)
+	result.Observed = cloneJSONValue(value.Observed)
+	if value.Inverse != nil {
+		inverse := *value.Inverse
+		inverse.Value = cloneJSONValue(value.Inverse.Value)
+		result.Inverse = &inverse
+	}
+	return result
+}
+
+func cloneJSONValue(value JSONValue) JSONValue {
+	if value == nil { return nil }
+	return append(JSONValue(nil), value...)
 }
