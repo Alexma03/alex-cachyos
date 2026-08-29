@@ -73,7 +73,8 @@ rules:
     test_command: >-
       go test ./... &&
       bash -n apply bin/alex-cachyos-webapp-launch lib/*.sh modules/*.sh &&
-      python3 -c 'import json; from pathlib import Path; [json.load(p.open()) for p in Path("profiles").glob("*.json")]'
+      python3 -c 'import json; from pathlib import Path; [json.load(p.open()) for p in Path("profiles").glob("*.json")]' &&
+      go run ./tools/sync-assets --check
     build_command: ""
     coverage_threshold: 0
   archive:
@@ -86,8 +87,9 @@ testing:
     command: >-
       go test ./... &&
       bash -n apply bin/alex-cachyos-webapp-launch lib/*.sh modules/*.sh &&
-      python3 -c 'import json; from pathlib import Path; [json.load(p.open()) for p in Path("profiles").glob("*.json")]'
-    framework: "Go unit tests plus Bash syntax validation and Python stdlib JSON parsing"
+      python3 -c 'import json; from pathlib import Path; [json.load(p.open()) for p in Path("profiles").glob("*.json")]' &&
+      go run ./tools/sync-assets --check
+    framework: "Go unit tests plus Bash syntax validation, Python stdlib JSON parsing, and embedded asset drift checking"
   layers:
     unit: "not available; no unit-test files or harness discovered"
     integration: "not available; no integration harness discovered"
@@ -105,6 +107,10 @@ testing:
       - scope: "."
         command: "go test ./..."
         framework: "Go testing"
+    asset_check:
+      - scope: "."
+        command: "go run ./tools/sync-assets --check"
+        framework: "Go asset synchronization tool"
   coverage:
     command: ""
     commands: []
