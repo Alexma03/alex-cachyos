@@ -262,3 +262,190 @@ func TestCheckRejectsCopyDriftWithoutWriting(t *testing.T) {
 		t.Fatalf("--check changed the manifest: %v", err)
 	}
 }
+
+func useDeclaredAssets(t *testing.T, declarations ...declaredAsset) {
+	t.Helper()
+	previous := declaredAssets
+	declaredAssets = append([]declaredAsset(nil), declarations...)
+	t.Cleanup(func() { declaredAssets = previous })
+}
+
+func writeAssetFixture(t *testing.T, root, rel string, data []byte) {
+	t.Helper()
+	name := filepath.Join(root, filepath.FromSlash(rel))
+	if err := os.MkdirAll(filepath.Dir(name), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(name, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestEmbeddedAssetsAreHashedButNotCopied(t *testing.T) {
+	root := t.TempDir()
+	writeAssetFixture(t, root, "copied.txt", []byte("copied\n"))
+	writeAssetFixture(t, root, "embedded/nested.txt", []byte("embedded\n"))
+	useDeclaredAssets(t,
+		declaredAsset{path: "copied.txt", mode: assetCopied},
+		declaredAsset{path: "embedded/nested.txt", mode: assetEmbedded},
+	)
+	dest := filepath.Join(root, "generated")
+	if err := syncAssets(root, dest, false); err != nil {
+		t.Fatal(err)
+	}
+	var got manifest
+	manifestBytes, err := os.ReadFile(filepath.Join(dest, manifestName))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(manifestBytes, &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Entries) != 2 {
+		t.Fatalf("manifest entries = %#v, want copied and embedded sources", got.Entries)
+	}
+	byPath := map[string]entry{}
+	for _, item := range got.Entries {
+		byPath[item.Path] = item
+	}
+	sum := sha256.Sum256([]byte("embedded\n"))
+	if item := byPath["embedded/nested.txt"]; item.Size != int64(len("embedded\n")) || item.SHA256 != hex.EncodeToString(sum[:]) {
+		t.Fatalf("embedded manifest entry = %#v", item)
+	}
+	if data, err := os.ReadFile(filepath.Join(dest, "copied.txt")); err != nil || string(data) != "copied\n" {
+		t.Fatalf("copied asset = %q, %v", data, err)
+	}
+	if _, err := os.Lstat(filepath.Join(dest, "embedded/nested.txt")); !os.IsNotExist(err) {
+		t.Fatalf("embedded source was copied: %v", err)
+	}
+}
+
+func TestEmbeddedDestinationCleanupCheckAndUndeclaredPreservation(t *testing.T) {
+	root := t.TempDir()
+	writeAssetFixture(t, root, "embedded/owned.txt", []byte("source\n"))
+	useDeclaredAssets(t, declaredAsset{path: "embedded/", mode: assetEmbedded})
+	dest := filepath.Join(root, "generated")
+	owned := filepath.Join(dest, "embedded", "owned.txt")
+	keep := filepath.Join(dest, "embedded", "undeclared.txt")
+	writeAssetFixture(t, root, filepath.ToSlash(filepath.Join("generated", "embedded", "owned.txt")), []byte("stale\n"))
+	writeAssetFixture(t, root, filepath.ToSlash(filepath.Join("generated", "embedded", "undeclared.txt")), []byte("keep\n"))
+	if err := syncAssets(root, dest, false); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(owned); !os.IsNotExist(err) {
+		t.Fatalf("embedded destination was not removed: %v", err)
+	}
+	if data, err := os.ReadFile(keep); err != nil || string(data) != "keep\n" {
+		t.Fatalf("undeclared destination changed: %q, %v", data, err)
+	}
+	if err := os.WriteFile(owned, []byte("stale again\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := syncAssets(root, dest, true); err == nil {
+		t.Fatal("--check accepted a stale embedded destination")
+	}
+	if data, err := os.ReadFile(owned); err != nil || string(data) != "stale again\n" {
+		t.Fatalf("--check changed stale embedded destination: %q, %v", data, err)
+	}
+	if data, err := os.ReadFile(keep); err != nil || string(data) != "keep\n" {
+		t.Fatalf("--check changed undeclared destination: %q, %v", data, err)
+	}
+}
+
+func TestDeclarationsRejectOverlapDuplicatesAndTraversalBeforeWriting(t *testing.T) {
+	tests := []struct {
+		name         string
+		declarations []declaredAsset
+		sources      map[string][]byte
+	}{
+		{
+			name: "duplicate across modes",
+			declarations: []declaredAsset{
+				{path: "same.txt", mode: assetCopied},
+				{path: "same.txt", mode: assetEmbedded},
+			},
+			sources: map[string][]byte{"same.txt": []byte("same\n")},
+		},
+		{
+			name: "directory and child overlap",
+			declarations: []declaredAsset{
+				{path: "tree/", mode: assetCopied},
+				{path: "tree/child.txt", mode: assetEmbedded},
+			},
+			sources: map[string][]byte{"tree/child.txt": []byte("child\n")},
+		},
+		{
+			name:         "traversal",
+			declarations: []declaredAsset{{path: "../escape.txt", mode: assetEmbedded}},
+		},
+		{
+			name:         "noncanonical traversal",
+			declarations: []declaredAsset{{path: "tree/../escape.txt", mode: assetCopied}},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			root := t.TempDir()
+			for rel, data := range test.sources {
+				writeAssetFixture(t, root, rel, data)
+			}
+			keep := filepath.Join(root, "generated", "keep.txt")
+			writeAssetFixture(t, root, filepath.ToSlash(filepath.Join("generated", "keep.txt")), []byte("keep\n"))
+			useDeclaredAssets(t, test.declarations...)
+			if err := syncAssets(root, filepath.Dir(keep), false); err == nil {
+				t.Fatal("unsafe declarations were accepted")
+			}
+			if data, err := os.ReadFile(keep); err != nil || string(data) != "keep\n" {
+				t.Fatalf("failed declaration changed existing destination: %q, %v", data, err)
+			}
+			if _, err := os.Lstat(filepath.Join(filepath.Dir(keep), manifestName)); !os.IsNotExist(err) {
+				t.Fatalf("failed declaration wrote a manifest: %v", err)
+			}
+		})
+	}
+}
+
+func TestManifestUnionEntriesAreDeterministic(t *testing.T) {
+	root := t.TempDir()
+	writeAssetFixture(t, root, "z-copy.txt", []byte("z\n"))
+	writeAssetFixture(t, root, "embedded/a.txt", []byte("a\n"))
+	writeAssetFixture(t, root, "embedded/nested/m.txt", []byte("m\n"))
+	declarations := []declaredAsset{
+		{path: "z-copy.txt", mode: assetCopied},
+		{path: "embedded/", mode: assetEmbedded},
+	}
+	useDeclaredAssets(t, declarations...)
+	first := filepath.Join(root, "first")
+	if err := syncAssets(root, first, false); err != nil {
+		t.Fatal(err)
+	}
+	firstManifest, err := os.ReadFile(filepath.Join(first, manifestName))
+	if err != nil {
+		t.Fatal(err)
+	}
+	declaredAssets = []declaredAsset{declarations[1], declarations[0]}
+	second := filepath.Join(root, "second")
+	if err := syncAssets(root, second, false); err != nil {
+		t.Fatal(err)
+	}
+	secondManifest, err := os.ReadFile(filepath.Join(second, manifestName))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(firstManifest, secondManifest) {
+		t.Fatalf("manifest changed with declaration order:\n%s\n---\n%s", firstManifest, secondManifest)
+	}
+	var got manifest
+	if err := json.Unmarshal(firstManifest, &got); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"embedded/a.txt", "embedded/nested/m.txt", "z-copy.txt"}
+	if len(got.Entries) != len(want) {
+		t.Fatalf("manifest entries = %#v", got.Entries)
+	}
+	for i, path := range want {
+		if got.Entries[i].Path != path {
+			t.Fatalf("manifest order = %#v, want %v", got.Entries, want)
+		}
+	}
+}

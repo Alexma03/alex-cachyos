@@ -20,13 +20,25 @@ const (
 	manifestSchema = "alex-cachyos.source-manifest/v1"
 )
 
-var declaredPaths = []string{
-	"bin/alex-cachyos-webapp-launch",
-	"catalog/",
-	"packaging/",
-	"templates/apps/",
-	"templates/devtools/",
-	"templates/vicinae/",
+type assetMode uint8
+
+const (
+	assetCopied assetMode = iota
+	assetEmbedded
+)
+
+type declaredAsset struct {
+	path string
+	mode assetMode
+}
+
+var declaredAssets = []declaredAsset{
+	{path: "bin/alex-cachyos-webapp-launch", mode: assetCopied},
+	{path: "catalog/", mode: assetCopied},
+	{path: "packaging/", mode: assetCopied},
+	{path: "templates/apps/", mode: assetCopied},
+	{path: "templates/devtools/", mode: assetCopied},
+	{path: "templates/vicinae/", mode: assetCopied},
 }
 
 type manifest struct {
@@ -41,6 +53,16 @@ type entry struct {
 type asset struct {
 	rel  string
 	data []byte
+	mode assetMode
+}
+type normalizedDeclaration struct {
+	raw  string
+	rel  string
+	mode assetMode
+}
+type assetPath struct {
+	rel  string
+	mode assetMode
 }
 
 func main() {
@@ -113,33 +135,42 @@ func syncAssets(root, dest string, check bool) error {
 	}
 	for _, a := range assets {
 		name := filepath.Join(dest, filepath.FromSlash(a.rel))
-		if err := writeFile(root, name, a.data); err != nil {
-			return fmt.Errorf("write %s: %w", a.rel, err)
+		switch a.mode {
+		case assetCopied:
+			if err := writeFile(root, name, a.data); err != nil {
+				return fmt.Errorf("write %s: %w", a.rel, err)
+			}
+		case assetEmbedded:
+			if err := removeEmbeddedDestination(dest, name, a.rel); err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("unsupported asset mode for %s", a.rel)
 		}
 	}
 	return writeFile(root, filepath.Join(dest, manifestName), mb)
 }
 
 func collectAssets(root, dest string) ([]asset, error) {
-	var names []string
-	for _, raw := range declaredPaths {
-		rel, err := sourceRel(raw)
-		if err != nil {
-			return nil, err
-		}
-		full := filepath.Join(root, filepath.FromSlash(rel))
+	declarations, err := normalizeDeclarations()
+	if err != nil {
+		return nil, err
+	}
+	var paths []assetPath
+	for _, declaration := range declarations {
+		full := filepath.Join(root, filepath.FromSlash(declaration.rel))
 		if !within(root, full) || within(full, dest) || within(dest, full) {
-			return nil, fmt.Errorf("declared asset path is outside the source root: %q", raw)
+			return nil, fmt.Errorf("declared asset path is outside the source root: %q", declaration.raw)
 		}
 		if err := safePath(root, full); err != nil {
 			return nil, err
 		}
 		i, err := os.Lstat(full)
 		if err != nil {
-			return nil, fmt.Errorf("declared asset path %q is unavailable: %w", raw, err)
+			return nil, fmt.Errorf("declared asset path %q is unavailable: %w", declaration.raw, err)
 		}
-		if strings.HasSuffix(raw, "/") && !i.IsDir() {
-			return nil, fmt.Errorf("declared asset directory %q is not a directory", raw)
+		if strings.HasSuffix(declaration.raw, "/") && !i.IsDir() {
+			return nil, fmt.Errorf("declared asset directory %q is not a directory", declaration.raw)
 		}
 		if i.IsDir() {
 			err = filepath.WalkDir(full, func(name string, d fs.DirEntry, e error) error {
@@ -155,37 +186,64 @@ func collectAssets(root, dest string) ([]asset, error) {
 				if !d.Type().IsRegular() {
 					return fmt.Errorf("declared asset %q is not a regular file", name)
 				}
-				r, e := filepath.Rel(root, name)
+				rel, e := filepath.Rel(root, name)
 				if e != nil || !within(root, name) {
 					return fmt.Errorf("asset path escapes source root: %q", name)
 				}
-				names = append(names, filepath.ToSlash(r))
+				paths = append(paths, assetPath{rel: filepath.ToSlash(rel), mode: declaration.mode})
 				return nil
 			})
 		} else if i.Mode().IsRegular() {
-			names = append(names, rel)
+			paths = append(paths, assetPath{rel: declaration.rel, mode: declaration.mode})
 		} else {
-			err = fmt.Errorf("declared asset %q is not a regular file or directory", raw)
+			err = fmt.Errorf("declared asset %q is not a regular file or directory", declaration.raw)
 		}
 		if err != nil {
-			return nil, fmt.Errorf("scan declared asset %q: %w", raw, err)
+			return nil, fmt.Errorf("scan declared asset %q: %w", declaration.raw, err)
 		}
 	}
-	sort.Strings(names)
-	for i := 1; i < len(names); i++ {
-		if names[i] == names[i-1] {
-			return nil, fmt.Errorf("declared asset paths overlap at %q", names[i])
+	sort.Slice(paths, func(i, j int) bool { return paths[i].rel < paths[j].rel })
+	for i := 1; i < len(paths); i++ {
+		if paths[i].rel == paths[i-1].rel {
+			return nil, fmt.Errorf("declared asset paths overlap at %q", paths[i].rel)
 		}
 	}
-	assets := make([]asset, 0, len(names))
-	for _, rel := range names {
-		data, err := readRegular(filepath.Join(root, filepath.FromSlash(rel)))
+	assets := make([]asset, 0, len(paths))
+	for _, path := range paths {
+		data, err := readRegular(filepath.Join(root, filepath.FromSlash(path.rel)))
 		if err != nil {
-			return nil, fmt.Errorf("read asset %s: %w", rel, err)
+			return nil, fmt.Errorf("read asset %s: %w", path.rel, err)
 		}
-		assets = append(assets, asset{rel: rel, data: data})
+		assets = append(assets, asset{rel: path.rel, data: data, mode: path.mode})
 	}
 	return assets, nil
+}
+
+func normalizeDeclarations() ([]normalizedDeclaration, error) {
+	declarations := make([]normalizedDeclaration, 0, len(declaredAssets))
+	for _, declaration := range declaredAssets {
+		if declaration.mode != assetCopied && declaration.mode != assetEmbedded {
+			return nil, fmt.Errorf("unsupported asset mode for declaration %q", declaration.path)
+		}
+		rel, err := sourceRel(declaration.path)
+		if err != nil {
+			return nil, err
+		}
+		declarations = append(declarations, normalizedDeclaration{
+			raw: declaration.path, rel: rel, mode: declaration.mode,
+		})
+	}
+	sort.Slice(declarations, func(i, j int) bool { return declarations[i].rel < declarations[j].rel })
+	for i := 1; i < len(declarations); i++ {
+		previous, current := declarations[i-1], declarations[i]
+		if current.rel == previous.rel {
+			return nil, fmt.Errorf("duplicate declared asset path %q", current.rel)
+		}
+		if strings.HasPrefix(current.rel, previous.rel+"/") {
+			return nil, fmt.Errorf("declared asset paths overlap at %q and %q", previous.rel, current.rel)
+		}
+	}
+	return declarations, nil
 }
 func sourceRel(raw string) (string, error) {
 	if raw == "" || strings.ContainsAny(raw, "\\\x00") {
@@ -225,16 +283,57 @@ func checkAssets(dest string, assets []asset, expected []byte) error {
 	}
 	for _, a := range assets {
 		name := filepath.Join(dest, filepath.FromSlash(a.rel))
-		if err := safePath(dest, name); err != nil {
-			return fmt.Errorf("read generated asset %s: %w", a.rel, err)
+		switch a.mode {
+		case assetCopied:
+			if err := safePath(dest, name); err != nil {
+				return fmt.Errorf("read generated asset %s: %w", a.rel, err)
+			}
+			data, err := readRegular(name)
+			if err != nil {
+				return fmt.Errorf("read generated asset %s: %w", a.rel, err)
+			}
+			if !bytes.Equal(data, a.data) {
+				return fmt.Errorf("asset drift detected: %s", a.rel)
+			}
+		case assetEmbedded:
+			if err := requireAbsentEmbeddedDestination(dest, name, a.rel); err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("unsupported asset mode for %s", a.rel)
 		}
-		data, err := readRegular(name)
-		if err != nil {
-			return fmt.Errorf("read generated asset %s: %w", a.rel, err)
-		}
-		if !bytes.Equal(data, a.data) {
-			return fmt.Errorf("asset drift detected: %s", a.rel)
-		}
+	}
+	return nil
+}
+
+func removeEmbeddedDestination(dest, name, rel string) error {
+	if err := safePath(dest, name); err != nil {
+		return fmt.Errorf("remove embedded destination %s: %w", rel, err)
+	}
+	info, err := os.Lstat(name)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("inspect embedded destination %s: %w", rel, err)
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("embedded destination %s is not a regular file", rel)
+	}
+	if err := os.Remove(name); err != nil {
+		return fmt.Errorf("remove embedded destination %s: %w", rel, err)
+	}
+	return nil
+}
+
+func requireAbsentEmbeddedDestination(dest, name, rel string) error {
+	if err := safePath(dest, name); err != nil {
+		return fmt.Errorf("check embedded destination %s: %w", rel, err)
+	}
+	if _, err := os.Lstat(name); err == nil {
+		return fmt.Errorf("embedded destination must be absent: %s", rel)
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("check embedded destination %s: %w", rel, err)
 	}
 	return nil
 }
