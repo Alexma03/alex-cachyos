@@ -555,9 +555,9 @@ When Go tests land, `openspec/config.yaml` adds `go test ./...` and asset-copy c
 
 A failed Go rollout restores managed files through receipt inverses/backups, unregisters the main dev binary to reactivate the signed fallback, reapplies exact prior Pi pins, and delegates system rollback to Snapper. Reapplying a prior catalog uses object reads or an isolated tagged worktree, never the active dirty configurator worktree.
 
-## 15. Reviewable work units and workload guard
+## 15. Reviewable work units
 
-The implementation is high-risk and necessarily larger than the 400-line review budget. Under `ask-on-risk`, the tasks phase must forecast changed lines per unit and ask before apply or PR construction. The intended chained units are behavior slices, not file-type slices:
+The implementation is high-risk and uses behaviorally cohesive review units. By explicit user decision, there is no numeric line cap: line count must not force artificial splits, compressed tests, or design changes. Units split only when they combine unrelated behavior or materially increase reviewer risk:
 
 1. Go/XDG scaffolding plus catalog schema and asset-copy drift check.
 2. Merge/pin/render contracts plus catalog fixtures.
@@ -573,7 +573,7 @@ The implementation is high-risk and necessarily larger than the 400-line review 
 12. RDD, secret-reference web config, interactive-auth boundary, and fully provisioned Pi tool-registration/admission retirement harness.
 13. Acceptance harness, transition config, operator docs, and cutover evidence report.
 
-Each unit includes its behavior tests and relevant documentation, leaves the repository understandable on its own, and has a bounded rollback. If any unit forecasts above 400 changed lines, it is split again before implementation; no size exception is assumed.
+Each unit includes its behavior tests and relevant documentation, leaves the repository understandable on its own, and has a bounded rollback. Size is descriptive only; correctness, cohesion, and reviewer comprehension determine boundaries.
 
 ## 16. Alternatives and tradeoffs
 

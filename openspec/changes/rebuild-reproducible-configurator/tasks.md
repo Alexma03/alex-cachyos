@@ -2,27 +2,26 @@
 
 Implementation plan for the staged Go rebuild of `alex-cachyos`, built alongside the preserved Bash tree. Every task is an unchecked, actionable checkbox. Code-bearing units follow RED → GREEN → TRIANGULATE → REFACTOR with recorded evidence. Bash validation runs in every unit. Delivery is verification-first: every unit ends by preparing a bounded work-unit diff; staging, committing, and branch/PR creation are separate steps taken only on explicit user authorization (see Delivery rules).
 
-## Review Workload Forecast
+## Review Workload Record
 
 | Field | Value |
 |-------|-------|
-| Estimated changed lines | ~7,500 authored (code + tests + docs) plus ~1,000–2,000 generated embedded asset copies → **~8,500–9,500 total** |
-| 400-line budget risk | High |
-| Chained PRs recommended | Yes |
-| Suggested split | PR 1 → PR 20 (work units WU-0…WU-20 in dependency order; each ≤400 forecast lines; WU-19 splits 19a/19b before implementation if its forecast exceeds 400) — proposed review slices only; no branch or PR is created by this plan (Commit/PR deferral) |
-| Delivery strategy | ask-on-risk |
-| Chain strategy | `stacked-to-main` (selected by user) |
+| Integrated at closure | 52 commits; 122 files; 22,105 insertions |
+| Numeric line cap | None — explicitly removed by the user |
+| Review-unit policy | Split only by behavioral cohesion and material reviewer risk; line count is non-binding |
+| PR construction | Deferred; no PR or push has been authorized |
+| Chain strategy if later resumed | `stacked-to-main` (selected by user) |
 
 ```text
 Decision needed before apply: No (resolved: stacked-to-main)
 Chained PRs recommended: Yes
 Chain strategy: stacked-to-main
-400-line budget risk: High
+Numeric line cap: None (removed by explicit user decision)
 ```
 
 ## Delivery rules (bind every unit)
 
-- **ask-on-risk:** ask the user before apply and, when the user separately authorizes PR construction, before that construction, whenever a unit's realized diff approaches 400 changed lines. No size exception is assumed anywhere.
+- **Behavioral review scope:** keep units cohesive and reasonably reviewable, but never split, compress tests, or redesign implementation to satisfy a numeric line count. The user explicitly removed the 400-line cap. Ask only when a unit expands into unrelated behavior or materially changes review risk.
 - **Chain strategy recorded before apply:** the user selected `stacked-to-main`. Each authorized review slice targets `main` sequentially and depends on the prior slice landing first. This records review boundaries only; branch/PR construction still requires separate explicit authorization.
 - **Commit/PR deferral (hard rule, binds every unit):** no task in this plan stages, commits, pushes, or creates branches/PRs. Each unit ends by verifying its work and preparing a **bounded work-unit diff** (unit-owned path list plus `git diff --stat` summary) as a handoff artifact. Staging and committing happen only after a separate explicit user authorization, staging the declared unit-owned paths explicitly and never `git add -A`. Branch and PR construction happen only on a separate explicit user request, consistent with applicable repository policy and the user-recorded chain strategy. Review slices and chain boundaries in this plan are proposals, not scheduled Git actions.
 - **RDD review authority:** review execution follows the user's receipt-driven-development switch and the harness's native RDD authority at implementation time. This plan records per-unit evidence and review scope, but its checklists neither fabricate review authority nor schedule automatic per-unit reviews merely because a plan exists; with the switch disabled, delivery follows ordinary repository policy and reports `disabled/unmanaged`, never a fabricated approval.
@@ -36,8 +35,8 @@ Chain strategy: stacked-to-main
 
 ## Unit map
 
-| Unit | Behavior slice | Specs | Design | Forecast | Rollback boundary |
-|------|----------------|-------|--------|----------|-------------------|
+| Unit | Behavior slice | Specs | Design | Initial forecast (non-binding) | Rollback boundary |
+|------|----------------|-------|--------|-------------------------------|-------------------|
 | WU-0 | Baseline safety evidence | staged-migration | §14 | ~0 | Read-only |
 | WU-1 | Go scaffold, CLI surface, XDG paths, runner config gate | convergence-commands, receipts, staged-migration | §2.1, §6.1, §13.2 | ~350 | Revert unit diff, or unit commits if the user separately authorized committing; Bash untouched |
 | WU-2 | sync-assets + embedded copies + drift check | staged-migration, catalog | §2.2 | ~300 + bounded copies | Revert; `go generate` reproduces copies |
@@ -57,7 +56,7 @@ Chain strategy: stacked-to-main
 | WU-16 | Managed assets + AGENTS/APPEND ownership | pi-configuration, security-boundaries | §9.3, §7.1 | ~350 | Revert |
 | WU-17 | Local-main Gentle AI handoff + resolver contract + fallback | pi-source-checkouts, review-mode | §8 | ~400 | Revert; no gentle-pi/gentle-ai edits |
 | WU-18 | RDD + secret-free web config + interactive auth | review-mode, web-search-config, pi-configuration | §10.1, §10.2 | ~350 | Revert |
-| WU-19 | sdd-research override + Pi-specific retirement harness | sdd-research-override, security-boundaries | §10.3 | ~400 (split 19a/19b if exceeded) | Revert; harness is isolated-HOME only |
+| WU-19 | sdd-research override + Pi-specific retirement harness | sdd-research-override, security-boundaries | §10.3 | Historical estimate only | Revert; harness is isolated-HOME only |
 | WU-20 | Acceptance harness, transition config, docs, cutover evidence | acceptance-verification, staged-migration | §13.2, §14, §19 | ~350 | Revert |
 
 ---
@@ -68,7 +67,7 @@ Chain strategy: stacked-to-main
 - [x] Confirm the transition guard passes before any change: `bash -n apply bin/alex-cachyos-webapp-launch lib/*.sh modules/*.sh && python3 -c 'import json; from pathlib import Path; [json.load(p.open()) for p in Path("profiles").glob("*.json")]'` exits 0. <!-- sdd-owner: implementation -->
 - [x] Confirm the documented start state: `test ! -f go.mod` and `test ! -d internal` succeed, so WU-1 begins from the design's stated baseline. <!-- sdd-owner: implementation -->
 
-## WU-1 — Go scaffold, CLI surface, XDG state paths, runner config gate (~350)
+## WU-1 — Go scaffold, CLI surface, XDG state paths, runner config gate
 
 Specs: convergence-commands (Preserved CLI surface), receipts (XDG state compliance), staged-migration (Transition testing configuration). Design §2.1, §6.1, §13.2.
 
@@ -81,7 +80,7 @@ Specs: convergence-commands (Preserved CLI surface), receipts (XDG state complia
 - [x] Update `openspec/config.yaml`: add `go test ./...` to `testing.runner`, `rules.verify.test_command`, and `testing.commands` **only after** `go test ./...` passes locally, retaining `bash -n …` and the profile JSON parse in the same command chain (staged-migration: both runners present once Go tests land). <!-- sdd-owner: implementation -->
 - [x] Verify and prepare the work-unit diff: `go test ./... && go vet ./...` exit 0; transition guard exits 0; `git status --porcelain` delta vs WU-0 baseline contains only unit-owned paths; record that exact path list and `git diff --stat` as the bounded diff handoff. Staging/committing is deferred: it happens only after a separate explicit user authorization, staging that exact path list explicitly and never `git add -A`. <!-- sdd-owner: implementation -->
 
-## WU-2 — sync-assets tool + embedded copies + drift check (~300 + bounded generated copies)
+## WU-2 — sync-assets tool + embedded copies + drift check
 
 Specs: staged-migration (Go CLI developed alongside with embedded copies), catalog (Embedded assets). Design §2.2.
 
@@ -91,7 +90,7 @@ Specs: staged-migration (Go CLI developed alongside with embedded copies), catal
 - [x] Update `openspec/config.yaml`: append `go run ./tools/sync-assets --check` to the verify/test chain (design §13.2 tier 2), retaining all previous entries. <!-- sdd-owner: implementation -->
 - [x] Verify and prepare the work-unit diff: `go test ./... && go vet ./... && go run ./tools/sync-assets --check` exit 0; transition guard exits 0; dirty-worktree baseline unchanged; record the unit-owned path list and `git diff --stat` as the bounded diff handoff. Staging/committing is deferred: it happens only after a separate explicit user authorization, with explicit unit-owned paths and never `git add -A`. <!-- sdd-owner: implementation -->
 
-## WU-3 — Catalog schema, decode, pre-mutation validation (~400)
+## WU-3 — Catalog schema, decode, pre-mutation validation
 
 Specs: catalog (Versioned schema with pre-mutation validation; unknown module rejection). Design §3.1.
 
@@ -100,7 +99,7 @@ Specs: catalog (Versioned schema with pre-mutation validation; unknown module re
 - [x] TRIANGULATE `testdata/catalog/galaxy-minimal.yaml`: a valid minimal catalog passes end-to-end; each invalid fixture under `testdata/catalog/invalid-*.yaml` produces a message naming the offending entry. <!-- sdd-owner: implementation -->
 - [x] Verify and prepare the work-unit diff: `go test ./... && go vet ./... && go run ./tools/sync-assets --check` exit 0 (schema dir now embedded via declared copy); transition guard exits 0; baseline unchanged; record the unit-owned path list and `git diff --stat` as the bounded diff handoff. Staging/committing is deferred: it happens only after a separate explicit user authorization, with explicit unit-owned paths and never `git add -A`. <!-- sdd-owner: implementation -->
 
-## WU-4 — Merge precedence, normalization, digest (~380)
+## WU-4 — Merge precedence, normalization, digest
 
 Specs: catalog (Global-to-role-to-host merge precedence). Design §3.2.
 
@@ -110,19 +109,19 @@ Specs: catalog (Global-to-role-to-host merge precedence). Design §3.2.
 - [x] REFACTOR: consolidate merge rule table into one switch keyed by value kind; tests unchanged. <!-- sdd-owner: implementation -->
 - [x] Verify and prepare the work-unit diff: `go test ./... && go vet ./... && go run ./tools/sync-assets --check` exit 0; transition guard exits 0; baseline unchanged; record the unit-owned path list and `git diff --stat` as the bounded diff handoff. Staging/committing is deferred: it happens only after a separate explicit user authorization, with explicit unit-owned paths and never `git add -A`. <!-- sdd-owner: implementation -->
 
-## WU-5 — Source-specific pin grammar, host resolution, initial catalog authoring (~380 + ~150 YAML)
+## WU-5 — Source-specific pin grammar, host resolution, initial catalog authoring
 
 Specs: catalog (Exact-version pinning only; Desired pins versus resolved versions; Host resolution without sensitive identifiers), pi-configuration (Exact-pinned Pi package set). Design §3.3, §3.4.
 
 - [x] RED `internal/catalog/pins_test.go`: failing tests — npm ranges (`^`, `~`, `>=`, `latest`, non-exact tags) rejected; npm exact accepted; source checkout requires canonical remote + branch `main` + 40-hex commit; `pacmanArtifact` accepted only with approved cache/archive source + SHA-256 and never as the default for repository packages; AUR/local requires source commit + patch SHA-256; remote artifact requires SHA-256; relative checkout roots and unsafe/forbidden destinations rejected. Evidence: failing test output. <!-- sdd-owner: implementation -->
 - [x] GREEN `internal/catalog/pins.go` typed-by-source identity validation. Evidence: tests pass. <!-- sdd-owner: implementation -->
-- [ ] RED `internal/app/host_test.go`: `--host` beats hostname; hostname resolution goes through the host port; unmatched hostname fails closed with an error listing known hosts before any mutation; the fake host port records that DMI, `/etc/machine-id`, and `/etc/machine-info` are never read. Evidence: failing test output; then GREEN in `internal/app/host.go`. <!-- sdd-owner: implementation -->
+- [x] RED `internal/app/host_test.go`: `--host` beats hostname; hostname resolution goes through the host port; unmatched hostname fails closed with an error listing known hosts before any mutation; the fake host port records that DMI, `/etc/machine-id`, and `/etc/machine-info` are never read. Evidence: failing test output; then GREEN in `internal/app/host.go`. <!-- sdd-owner: implementation -->
 - [ ] Establish exact current versions by read-only observation (no invention): `pi list`, inspect `~/.pi/agent/npm`, query `origin/main` revisions through the read-only Git port for both catalog-selected dependency checkouts, run `pacman -Q` for the want-list, and inspect the fingerprint `_commit`/pkgrel/patch SHA-256 from `packaging/libfprint-egismoc-sdcp-git/`; record observations in the session log. Dependency checkouts remain outside the edit surface. <!-- sdd-owner: implementation -->
 - [ ] Author the initial catalog from observations: `catalog/global.yaml`, `catalog/roles/workstation.yaml` (empty role, reserved), `catalog/hosts/galaxy.yaml` — each with `catalogVersion: 1` and `kind`, the approved exact npm inventory (`pi-commandcode-provider`, `pi-subagents-j0k3r`, `@juicesharp/rpiv-ask-user-question`, `pi-web-access`, `@juicesharp/rpiv-todo`, `pi-btw`, `pi-mcp-adapter`, `gentle-engram`, `pi-antigravity`, plus a local path package resolved from the catalog's named Gentle Pi checkout reference), source checkout pins, and module content mapping; validation must reject the build if any pin or resolved local-package path is incomplete. <!-- sdd-owner: implementation -->
 - [ ] Repository-level validation test `internal/catalog/repo_test.go`: exactly one concrete host (`galaxy`); catalog declares its release name (`catalog-v1.0.0` reserved until the first real checkpoint) and digest; embedded copy of `catalog/` passes `sync-assets --check`. <!-- sdd-owner: implementation -->
 - [ ] Verify and prepare the work-unit diff: `go test ./... && go vet ./... && go run ./tools/sync-assets --check` exit 0; transition guard exits 0; read-only statuses of both catalog-selected dependency checkouts are unchanged from baseline; record the unit-owned path list and `git diff --stat` as the bounded diff handoff. Staging/committing is deferred: it happens only after a separate explicit user authorization, with explicit unit-owned paths and never `git add -A`. <!-- sdd-owner: implementation -->
 
-## WU-6 — Planner, fake runner, galaxy fixture (~390)
+## WU-6 — Planner, fake runner, galaxy fixture
 
 Specs: planner (all requirements), convergence-commands (Dry-run is a plan, not an execution). Design §4.1, §13.1.
 
@@ -133,7 +132,7 @@ Specs: planner (all requirements), convergence-commands (Dry-run is a plan, not 
 - [ ] Fixture `testdata/planner/galaxy-plan.json` + `internal/app/apply_test.go`: with fake runner, `apply --host galaxy --dry-run` produces the asserted plan (dependency order, `global → role → host` precedence, exact-pin resolution) with zero mutations; a second planned apply against the converged fixture yields no mutating steps (noChange). Evidence: `go test ./...` passes without any hardware requirement. <!-- sdd-owner: implementation -->
 - [ ] Verify and prepare the work-unit diff: `go test ./... && go vet ./... && go run ./tools/sync-assets --check` exit 0; transition guard exits 0; baseline unchanged; record the unit-owned path list and `git diff --stat` as the bounded diff handoff. Staging/committing is deferred: it happens only after a separate explicit user authorization, with explicit unit-owned paths and never `git add -A`. <!-- sdd-owner: implementation -->
 
-## WU-7 — Receipt schema, atomic store, current index (~390)
+## WU-7 — Receipt schema, atomic store, current index
 
 Specs: receipts (all requirements). Design §6.2, §6.3.
 
@@ -144,18 +143,18 @@ Specs: receipts (all requirements). Design §6.2, §6.3.
 - [x] Docs fragment: `docs/receipts.md` — layout, one-immutable-receipt-per-run, atomic index, no-secrets/no-biometrics/no-diff contract (tests stay in this unit). <!-- sdd-owner: implementation -->
 - [x] Verify and prepare the work-unit diff: `go test ./... && go vet ./... && go run ./tools/sync-assets --check` exit 0; transition guard exits 0; baseline unchanged; record the unit-owned path list and `git diff --stat` as the bounded diff handoff. Staging/committing is deferred: it happens only after a separate explicit user authorization, with explicit unit-owned paths and never `git add -A`. <!-- sdd-owner: implementation -->
 
-## WU-8 — Adoption backups, ownership manifests, inverse preconditions (~360)
+## WU-8 — Adoption backups, ownership manifests, inverse preconditions
 
 Specs: convergence-commands (Detect-and-adopt, file part), security-boundaries (untouched runtime state, secret-file handling). Design §7.1, §6.4.
 
 - [x] RED `internal/adopt/adopt_test.go`: failing tests — `<target>.bak.alex-cachyos` created exactly once via exclusive creation with preserved metadata, fsync, and SHA-256; adoption record binds target/backup/original hash+metadata/first receipt; a pre-existing backup without a matching valid record blocks adoption; unknown backups are never overwritten or guessed. Evidence: failing test output. <!-- sdd-owner: implementation -->
-- [ ] RED inverse precondition tests (`internal/app/rollback_preconditions_test.go`): rollback refuses when live hash ≠ recorded after-hash; tool-created files removed only when the live hash still matches; adopted files restore the recorded one-time backup; package-owned files restore via package semantics (never claim the backup is package authority). Evidence: failing test output. <!-- sdd-owner: implementation -->
+- [x] RED inverse precondition tests (`internal/app/rollback_preconditions_test.go`): rollback refuses when live hash ≠ recorded after-hash; tool-created files removed only when the live hash still matches; adopted files restore the recorded one-time backup; package-owned files restore via package semantics (never claim the backup is package authority). Evidence: failing test output. <!-- sdd-owner: implementation -->
 - [ ] RED secret-file boundary test: an unmanaged `~/.pi/web-search.json` is handled metadata-only (existence check, never opened, never backed up, blocked with instructions to replace credentials manually); once configurator-created, SHA-256 comparison against embedded expected bytes without parsing content. Evidence: failing test output. <!-- sdd-owner: implementation -->
 - [x] GREEN `internal/adopt/adopt.go` and inverse-descriptor support in `internal/planner`. Evidence: tests pass. <!-- sdd-owner: implementation -->
 - [x] TRIANGULATE: second `adopt` on an already-adopted target is a no-op recorded in the ownership manifest; hostname-based profile suggestion returns `galaxy` for a matching hostname and a suggestion list otherwise. <!-- sdd-owner: implementation -->
 - [ ] Verify and prepare the work-unit diff: `go test ./... && go vet ./... && go run ./tools/sync-assets --check` exit 0; transition guard exits 0; baseline unchanged; record the unit-owned path list and `git diff --stat` as the bounded diff handoff. Staging/committing is deferred: it happens only after a separate explicit user authorization, with explicit unit-owned paths and never `git add -A`. <!-- sdd-owner: implementation -->
 
-## WU-9 — Non-destructive Git port: checkout algorithm, tags, isolated worktrees (~390)
+## WU-9 — Non-destructive Git port: checkout algorithm, tags, isolated worktrees
 
 Specs: worktree-safety (all requirements), pi-source-checkouts (Clone-if-missing adopt-if-present; Exact resolved commit recorded), catalog (Annotated catalog checkpoint tags). Design §7.2, §7.3.
 
@@ -165,18 +164,18 @@ Specs: worktree-safety (all requirements), pi-source-checkouts (Clone-if-missing
 - [x] TRIANGULATE `internal/gitx/update_test.go`: `apply --update` fetches `origin/main`, reports the exact newer candidate commit, and asserts the checkout ref, catalog bytes, and embedded manifest are unchanged. <!-- sdd-owner: implementation -->
 - [x] Verify and prepare the work-unit diff: `go test ./... && go vet ./... && go run ./tools/sync-assets --check` exit 0; transition guard exits 0; read-only statuses of both catalog-selected dependency checkouts are unchanged from baseline; record the unit-owned path list and `git diff --stat` as the bounded diff handoff. Staging/committing is deferred: it happens only after a separate explicit user authorization, with explicit unit-owned paths and never `git add -A`. <!-- sdd-owner: implementation -->
 
-## WU-10 — apply orchestration: lock, idempotency, elevation, dry-run (~380)
+## WU-10 — apply orchestration: lock, idempotency, elevation, dry-run
 
 Specs: convergence-commands (Idempotent apply; Single-instance lock; Least-privilege elevation; Dry-run). Design §4.2, §4.3, §5.
 
 - [x] RED `internal/app/lock_test.go`: exclusive `flock` at validated `$XDG_RUNTIME_DIR/alex-cachyos-<uid>.lock` for mutating commands; contention exits 75 before any mutation. Evidence: failing test output; then GREEN `internal/app/lock.go`. <!-- sdd-owner: implementation -->
-- [ ] RED `internal/executor/executor_test.go`: every mutating step runs Observe → Compare → Apply → Observe with an immediate pre-mutation re-observe; a satisfied step records `satisfied` and invokes no mutator; second apply on the converged fixture emits a receipt with `noChange: true` and executes no mutating step. Evidence: failing test output; then GREEN `internal/executor/executor.go`. <!-- sdd-owner: implementation -->
+- [x] RED `internal/executor/executor_test.go`: every mutating step runs Observe → Compare → Apply → Observe with an immediate pre-mutation re-observe; a satisfied step records `satisfied` and invokes no mutator; second apply on the converged fixture emits a receipt with `noChange: true` and executes no mutating step. Evidence: failing test output; then GREEN `internal/executor/executor.go`. <!-- sdd-owner: implementation -->
 - [x] RED `internal/runner/exec_test.go` + elevation decorator test: system steps are wrapped exactly as `/usr/bin/pkexec <absolute-command> <argv...>`; user steps run unprivileged; the `sudo` scanner covers every real and fake `CommandRequest`; requests are argv-only with `shell=false`, env allowlist, timeout/output limits, and typed output policy. Evidence: failing test output. <!-- sdd-owner: implementation -->
 - [ ] GREEN `internal/app/apply.go`, `internal/runner/exec.go`, elevation decorator, and the typed self-helper mode (normal process stages bytes + hashes, invokes the same binary via `pkexec` with a typed request; root side re-validates destination allowlist, source regular-file status, hash, mode, and operation type before atomic rename; accepts no general shell input) — proven against the fake elevation port. <!-- sdd-owner: implementation -->
 - [ ] TRIANGULATE: `apply --dry-run` performs local observations only, groups all `network: required` steps at the top, executes nothing, and leaves fixture state byte-identical; `check`/`--dry-run` never call the network port (assert). <!-- sdd-owner: implementation -->
 - [ ] Verify and prepare the work-unit diff: `go test ./... && go vet ./... && go run ./tools/sync-assets --check` exit 0; transition guard exits 0; baseline unchanged; record the unit-owned path list and `git diff --stat` as the bounded diff handoff. Staging/committing is deferred: it happens only after a separate explicit user authorization, with explicit unit-owned paths and never `git add -A`. <!-- sdd-owner: implementation -->
 
-## WU-11 — check / adopt / rollback / checkpoint / receipt command surfaces (~380)
+## WU-11 — check / adopt / rollback / checkpoint / receipt command surfaces
 
 Specs: convergence-commands (Non-mutating offline check; Rollback via inverse plan; Checkpoint command), catalog (tag recording in receipts), worktree-safety (non-mutating catalog reads). Design §5, §6.4, §7.3.
 
@@ -187,18 +186,18 @@ Specs: convergence-commands (Non-mutating offline check; Rollback via inverse pl
 - [ ] Docs fragment: `docs/rollback.md` — inverse-plan rollback, preconditions, Snapper boundary, dirty-worktree guarantee. <!-- sdd-owner: implementation -->
 - [ ] Verify and prepare the work-unit diff: `go test ./... && go vet ./... && go run ./tools/sync-assets --check` exit 0; transition guard exits 0; baseline unchanged; record the unit-owned path list and `git diff --stat` as the bounded diff handoff. Staging/committing is deferred: it happens only after a separate explicit user authorization, with explicit unit-owned paths and never `git add -A`. <!-- sdd-owner: implementation -->
 
-## WU-12 — Platform module factories: bootstrap + fingerprint (~400)
+## WU-12 — Platform module factories: bootstrap + fingerprint
 
 Specs: cachyos-platform (Module content mapped one-to-one; Explicit package ownership; Fingerprint package reproducible pinning). Design §11.
 
-- [ ] Read-only mapping of `modules/bootstrap.sh` and `modules/fingerprint.sh` into typed step inventories (want/remove lists, GRUB, Plymouth, ananicy-cpp, UFW, Chrome, zsh marker blocks, LTS deferral; PKGBUILD commit/pkgrel/patch SHA-256 from `packaging/libfprint-egismoc-sdcp-git/`); record the mapping in the session log. <!-- sdd-owner: implementation -->
+- [x] Read-only mapping of `modules/bootstrap.sh` and `modules/fingerprint.sh` into typed step inventories (want/remove lists, GRUB, Plymouth, ananicy-cpp, UFW, Chrome, zsh marker blocks, LTS deferral; PKGBUILD commit/pkgrel/patch SHA-256 from `packaging/libfprint-egismoc-sdcp-git/`); record the mapping in the session log. <!-- sdd-owner: implementation -->
 - [ ] RED `internal/platform/cachyos/bootstrap_test.go`: golden fake-runner plan — full-system update under the declared repository/transaction policy with recorded version changes, exact-name want/remove packages, explicit marking, atomic GRUB regeneration, Plymouth strip, ananicy-cpp, UFW, Chrome via paru, zsh marker-block rewrite, LTS deferral. Evidence: failing test output. <!-- sdd-owner: implementation -->
 - [ ] RED `internal/platform/cachyos/fingerprint_test.go`: skip rebuild when pinned commit+pkgrel already installed (satisfied, no mutator); build/install via `pacman -U` only after source/patch checksum verification; PAM overlays with fprintd `sufficient`. Evidence: failing test output. <!-- sdd-owner: implementation -->
 - [ ] GREEN `bootstrap.go`, `fingerprint.go`; extend `tools/sync-assets` declared copies with `packaging/`; wire both modules into the catalog with `dependsOn` ranks. Evidence: tests pass. <!-- sdd-owner: implementation -->
 - [ ] TRIANGULATE: idempotent re-plan reports satisfied dispositions; the plan records the transaction policy and version changes and performs no isolated implicit upgrade/downgrade outside it. <!-- sdd-owner: implementation -->
 - [ ] Verify and prepare the work-unit diff: `go test ./... && go vet ./... && go run ./tools/sync-assets --check` exit 0; transition guard exits 0; baseline unchanged; record the unit-owned path list and `git diff --stat` as the bounded diff handoff. Staging/committing is deferred: it happens only after a separate explicit user authorization, with explicit unit-owned paths and never `git add -A`. <!-- sdd-owner: implementation -->
 
-## WU-13 — Platform devtools + apps + vicinae (~380)
+## WU-13 — Platform devtools + apps + vicinae
 
 Specs: cachyos-platform (Module content mapped one-to-one; Webapp install with icon fallback). Design §11.
 
@@ -208,7 +207,7 @@ Specs: cachyos-platform (Module content mapped one-to-one; Webapp install with i
 - [ ] TRIANGULATE: idempotent observations for each module (satisfied on second plan); apps ordering dependency on desktop asserted via the planner invariants. <!-- sdd-owner: implementation -->
 - [ ] Verify and prepare the work-unit diff: `go test ./... && go vet ./... && go run ./tools/sync-assets --check` exit 0; transition guard exits 0; baseline unchanged; record the unit-owned path list and `git diff --stat` as the bounded diff handoff. Staging/committing is deferred: it happens only after a separate explicit user authorization, with explicit unit-owned paths and never `git add -A`. <!-- sdd-owner: implementation -->
 
-## WU-14 — Platform desktop + verify + explicit hardware gate (~380)
+## WU-14 — Platform desktop + verify + explicit hardware gate
 
 Specs: cachyos-platform (all remaining), acceptance-verification (Hardware verification gated on an explicit target). Design §11, §13.2 tier 4.
 
@@ -218,7 +217,7 @@ Specs: cachyos-platform (all remaining), acceptance-verification (Hardware verif
 - [ ] TRIANGULATE: full seven-module galaxy golden plan snapshot regenerated and asserted; extend `tools/sync-assets` declared copies with `overlays/galaxy/` (bounded generated diff). <!-- sdd-owner: implementation -->
 - [ ] Verify and prepare the work-unit diff: `go test ./... && go vet ./... && go run ./tools/sync-assets --check` exit 0; transition guard exits 0; baseline unchanged; record the unit-owned path list and `git diff --stat` as the bounded diff handoff. Staging/committing is deferred: it happens only after a separate explicit user authorization, with explicit unit-owned paths and never `git add -A`. <!-- sdd-owner: implementation -->
 
-## WU-15 — Pi exact packages, user-owned renders, 23-route dual rendering (~400)
+## WU-15 — Pi exact packages, user-owned renders, 23-route dual rendering
 
 Specs: pi-configuration (Exact-pinned Pi package set; Desired pins versus resolved Pi versions; User-owned cataloged files), model-routes (all requirements). Design §9.1, §9.2.
 
@@ -229,7 +228,7 @@ Specs: pi-configuration (Exact-pinned Pi package set; Desired pins versus resolv
 - [ ] TRIANGULATE: hand-edit one route level in a fixture `models.json` → `check` reports the drifted route with file and expected value; both files byte-compare to rendered expectations. <!-- sdd-owner: implementation -->
 - [ ] Verify and prepare the work-unit diff: `go test ./... && go vet ./... && go run ./tools/sync-assets --check` exit 0; transition guard exits 0; `~/.pi` untouched in tests (fixture homes only); baseline unchanged; record the unit-owned path list and `git diff --stat` as the bounded diff handoff. Staging/committing is deferred: it happens only after a separate explicit user authorization, with explicit unit-owned paths and never `git add -A`. <!-- sdd-owner: implementation -->
 
-## WU-16 — Managed-asset refresh, AGENTS/APPEND ownership, forbidden-path centralization (~350)
+## WU-16 — Managed-asset refresh, AGENTS/APPEND ownership, forbidden-path centralization
 
 Specs: pi-configuration (AGENTS.md user-owned, APPEND_SYSTEM.md package-managed; Package-managed assets verified, never vendored), security-boundaries (No secret values anywhere). Design §9.3, §7.1, §12.
 
@@ -240,7 +239,7 @@ Specs: pi-configuration (AGENTS.md user-owned, APPEND_SYSTEM.md package-managed;
 - [ ] Docs fragment: `docs/pi-reproduction.md` — user-owned vs package-managed split, `AGENTS.md`/`APPEND_SYSTEM.md` boundary. <!-- sdd-owner: implementation -->
 - [ ] Verify and prepare the work-unit diff: `go test ./... && go vet ./... && go run ./tools/sync-assets --check` exit 0; transition guard exits 0; baseline unchanged; record the unit-owned path list and `git diff --stat` as the bounded diff handoff. Staging/committing is deferred: it happens only after a separate explicit user authorization, with explicit unit-owned paths and never `git add -A`. <!-- sdd-owner: implementation -->
 
-## WU-17 — Local-main Gentle AI handoff: build, registration, resolver-selected execution, fallback (~400)
+## WU-17 — Local-main Gentle AI handoff: build, registration, resolver-selected execution, fallback
 
 Specs: pi-source-checkouts (Integrity-preserving local-main runtime handoff; Post-install verification; Skip-install escape hatch fails closed), review-mode (resolver-selected execution contract). Design §8.
 
@@ -252,7 +251,7 @@ Specs: pi-source-checkouts (Integrity-preserving local-main runtime handoff; Pos
 - [ ] Optional local-repo integration tier (isolated tool-owned worktrees only): build the exact cataloged commits and run resolver/manifest smokes; assert read-only statuses of both selected dependency checkouts are unchanged afterward. Record evidence in the session log; dependency checkouts are never edited. <!-- sdd-owner: implementation -->
 - [ ] Docs fragment: `docs/pi-reproduction.md` local-main handoff section (supported hook, provenance chain, signed fallback). Verify and prepare the work-unit diff with the standard verification chain; staging/committing is deferred to a separate explicit user authorization (Commit/PR deferral). <!-- sdd-owner: implementation -->
 
-## WU-18 — RDD enable/verify, secret-free web config, interactive-auth boundary (~350)
+## WU-18 — RDD enable/verify, secret-free web config, interactive-auth boundary
 
 Specs: review-mode (all requirements), web-search-config (all requirements), pi-configuration (Interactive auth is never cataloged), security-boundaries. Design §10.1, §10.2.
 
@@ -262,7 +261,7 @@ Specs: review-mode (all requirements), web-search-config (all requirements), pi-
 - [ ] TRIANGULATE: receipts from RDD/web-search fixture runs contain credential names and no values (schema-level rejection already in WU-7 is exercised end-to-end here). <!-- sdd-owner: implementation -->
 - [ ] Docs fragment: `docs/pi-reproduction.md` post-apply interactive steps — Codex `/login`, Kimi `/login kimi-coding`, browser-cookie opt-in, future OAuth. Verify and prepare the work-unit diff with the standard verification chain; staging/committing is deferred to a separate explicit user authorization (Commit/PR deferral). <!-- sdd-owner: implementation -->
 
-## WU-19 — sdd-research override, Pi-specific retirement predicate, provisioned runtime harness (~400; split 19a/19b before implementation if exceeded)
+## WU-19 — sdd-research override, Pi-specific retirement predicate, provisioned runtime harness
 
 Specs: sdd-research-override (all requirements), security-boundaries (issue-status network evidence only, no secrets). Design §10.3.
 
@@ -273,7 +272,7 @@ Specs: sdd-research-override (all requirements), security-boundaries (issue-stat
 - [ ] TRIANGULATE: predicate false on each individual missing condition (issues open, tools absent, grants empty, manifest mismatch, harness failure) with the override still installed in every case. <!-- sdd-owner: implementation -->
 - [ ] Verify and prepare the work-unit diff: `go test ./... && go vet ./... && go run ./tools/sync-assets --check` exit 0 (harness assets embedded via declared copies); transition guard exits 0; real `~/.pi` untouched in tests; baseline unchanged; record the unit-owned path list and `git diff --stat` as the bounded diff handoff. Staging/committing is deferred: it happens only after a separate explicit user authorization, with explicit unit-owned paths and never `git add -A`. <!-- sdd-owner: implementation -->
 
-## WU-20 — Acceptance harness, transition config finalization, docs, cutover evidence (~350)
+## WU-20 — Acceptance harness, transition config finalization, docs, cutover evidence
 
 Specs: acceptance-verification (all requirements), staged-migration (Cutover gated on validation evidence; Bash rollback fallback; Transition testing configuration). Design §13.2, §14, §19.
 
@@ -288,7 +287,7 @@ Specs: acceptance-verification (all requirements), staged-migration (Cutover gat
 
 ## Bounded review and lifecycle gates (parent-owned)
 
-- [ ] If and when the user separately authorizes branch/PR construction, first run the workload gate per chain unit: compare `git diff --stat <base>...HEAD` against the 400-line budget; on risk or overflow, split further and ask the user per `ask-on-risk`. Without that authorization, no branches or PRs are created. <!-- sdd-owner: parent -->
+- [ ] If and when the user separately authorizes branch/PR construction, review each behaviorally cohesive unit for unrelated scope and reviewer risk; no numeric line cap applies. Without that authorization, no branches or PRs are created. <!-- sdd-owner: parent -->
 - [x] Ask-on-risk chain gate resolved: the user selected `stacked-to-main`. Apply may proceed; branch/PR construction remains blocked until the user separately requests it. <!-- sdd-owner: parent -->
 - [ ] Review execution follows the user's enabled RDD switch and the harness's native authority at implementation time: check the effective review mode first; when disabled, run no reviews and report `disabled/unmanaged`; never fabricate review authority and never auto-review every unit merely because this plan exists. When enabled and the native flow directs it, start or reuse bounded review scoped to that unit's diff and its RED/GREEN/TRIANGULATE/REFACTOR evidence. <!-- sdd-owner: parent -->
 - [ ] Confirm lifecycle gates before any cutover discussion: fixture suite green, transition validation green, evidence report present, receipts/tags verified — cutover itself remains a separate proposal and is out of scope for this change. <!-- sdd-owner: parent -->
