@@ -77,8 +77,6 @@ func MergeDocuments(documents []Document) (Catalog, error) {
 // inherits. Each present source map merges recursively by stable key with later
 // same-key complete value replacement, while an omitted source map inherits.
 // Explicitly empty source maps remain present but never delete inherited keys.
-// pacmanArtifacts, aurLocal, and remoteArtifacts have no merge support until
-// WU-5b3b, so any present pointer must fail closed instead of dropping data.
 func mergePins(merged *Catalog, source *PinsDocument, issues *[]ValidationError) {
 	if source == nil {
 		*issues = append(*issues, ValidationError{Path: "/pins", Message: "pin definitions are nil"})
@@ -93,22 +91,107 @@ func mergePins(merged *Catalog, source *PinsDocument, issues *[]ValidationError)
 	if source.LocalPathPackages != nil {
 		mergeStringPinSource(&merged.Pins.LocalPathPackages, source.LocalPathPackages, "localPathPackages", issues)
 	}
-	appendUnsupportedPinSource(issues, "pacmanArtifacts", source.PacmanArtifacts)
-	appendUnsupportedPinSource(issues, "aurLocal", source.AURLocal)
-	appendUnsupportedPinSource(issues, "remoteArtifacts", source.RemoteArtifacts)
+	if source.PacmanArtifacts != nil {
+		mergePacmanArtifactSource(&merged.Pins.PacmanArtifacts, source.PacmanArtifacts, issues)
+	}
+	if source.AURLocal != nil {
+		mergeAURLocalSource(&merged.Pins.AURLocal, source.AURLocal, issues)
+	}
+	if source.RemoteArtifacts != nil {
+		mergeRemoteArtifactSource(&merged.Pins.RemoteArtifacts, source.RemoteArtifacts, issues)
+	}
 }
 
-// appendUnsupportedPinSource fails closed for a pin source whose merge rule is
-// not yet implemented: even an explicit empty map is present data that cannot be
-// carried into the merged catalog without silently dropping it.
-func appendUnsupportedPinSource[T any](issues *[]ValidationError, name string, source *map[string]T) {
-	if source == nil {
+// mergePacmanArtifactSource converts and merges one document's pacmanArtifacts
+// map. A present pointer to a nil map fails with the source path, while each entry
+// requires every schema-required field and fails with its named field path when one
+// is missing. Complete typed values replace same-key inherited values.
+func mergePacmanArtifactSource(destination *map[string]PacmanArtifactPin, source *map[string]PacmanArtifactPinDocument, issues *[]ValidationError) {
+	if *source == nil {
+		*issues = append(*issues, ValidationError{
+			Path: "/pins/pacmanArtifacts", Message: "pin definitions are nil",
+		})
 		return
 	}
-	*issues = append(*issues, ValidationError{
-		Path:    childPointer("/pins", name),
-		Message: "pin source merge is not yet supported",
-	})
+	if *destination == nil {
+		*destination = make(map[string]PacmanArtifactPin)
+	}
+	for _, name := range sortedPinNames(*source) {
+		pin := (*source)[name]
+		packageName, packageOK := requiredMergePinField("pacmanArtifacts", name, "package", pin.Package, issues)
+		version, versionOK := requiredMergePinField("pacmanArtifacts", name, "version", pin.Version, issues)
+		sourceName, sourceOK := requiredMergePinField("pacmanArtifacts", name, "source", pin.Source, issues)
+		sha256, sha256OK := requiredMergePinField("pacmanArtifacts", name, "sha256", pin.SHA256, issues)
+		if !(packageOK && versionOK && sourceOK && sha256OK) {
+			continue
+		}
+		(*destination)[name] = PacmanArtifactPin{
+			Package: packageName,
+			Version: version,
+			Source:  PacmanArtifactSource(sourceName),
+			SHA256:  sha256,
+		}
+	}
+}
+
+// mergeAURLocalSource converts and merges one document's aurLocal map under the
+// same presence and complete-value replacement rules as other typed pin sources.
+func mergeAURLocalSource(destination *map[string]AURLocalPin, source *map[string]AURLocalPinDocument, issues *[]ValidationError) {
+	if *source == nil {
+		*issues = append(*issues, ValidationError{
+			Path: "/pins/aurLocal", Message: "pin definitions are nil",
+		})
+		return
+	}
+	if *destination == nil {
+		*destination = make(map[string]AURLocalPin)
+	}
+	for _, name := range sortedPinNames(*source) {
+		pin := (*source)[name]
+		sourceCommit, sourceOK := requiredMergePinField("aurLocal", name, "sourceCommit", pin.SourceCommit, issues)
+		patchSHA256, patchOK := requiredMergePinField("aurLocal", name, "patchSHA256", pin.PatchSHA256, issues)
+		if !(sourceOK && patchOK) {
+			continue
+		}
+		(*destination)[name] = AURLocalPin{SourceCommit: sourceCommit, PatchSHA256: patchSHA256}
+	}
+}
+
+// mergeRemoteArtifactSource converts and merges one document's remoteArtifacts map
+// under the same presence and complete-value replacement rules as other typed pin
+// sources.
+func mergeRemoteArtifactSource(destination *map[string]RemoteArtifactPin, source *map[string]RemoteArtifactPinDocument, issues *[]ValidationError) {
+	if *source == nil {
+		*issues = append(*issues, ValidationError{
+			Path: "/pins/remoteArtifacts", Message: "pin definitions are nil",
+		})
+		return
+	}
+	if *destination == nil {
+		*destination = make(map[string]RemoteArtifactPin)
+	}
+	for _, name := range sortedPinNames(*source) {
+		pin := (*source)[name]
+		url, urlOK := requiredMergePinField("remoteArtifacts", name, "url", pin.URL, issues)
+		sha256, shaOK := requiredMergePinField("remoteArtifacts", name, "sha256", pin.SHA256, issues)
+		if !(urlOK && shaOK) {
+			continue
+		}
+		(*destination)[name] = RemoteArtifactPin{URL: url, SHA256: sha256}
+	}
+}
+
+// requiredMergePinField converts a required field pointer into a value, or appends
+// a named-field validation issue and reports false.
+func requiredMergePinField(source, name, field string, value *string, issues *[]ValidationError) (string, bool) {
+	if value == nil {
+		*issues = append(*issues, ValidationError{
+			Path:    childPointer(childPointer(childPointer("/pins", source), name), field),
+			Message: "required pin field is missing",
+		})
+		return "", false
+	}
+	return *value, true
 }
 
 func mergeStringPinSource(destination *map[string]string, source *map[string]string, name string, issues *[]ValidationError) {
