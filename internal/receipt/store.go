@@ -173,18 +173,39 @@ func (s *Store) updateCurrent(receiptPath, runID string, digest [32]byte) error 
 	if err != nil {
 		return fmt.Errorf("encode current receipt index: %w", err)
 	}
+	currentPath := filepath.Join(s.root, currentName)
+	previous, readErr := os.ReadFile(currentPath)
+	hasPrevious := readErr == nil
+	if readErr != nil && !os.IsNotExist(readErr) {
+		return fmt.Errorf("read current receipt index: %w", readErr)
+	}
 	temp, err := s.stage(s.root, ".current-", data)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = s.ops.remove(temp) }()
-	if err := s.ops.rename(temp, filepath.Join(s.root, currentName)); err != nil {
+	if err := s.ops.rename(temp, currentPath); err != nil {
 		return fmt.Errorf("publish current receipt index: %w", err)
 	}
 	if err := s.syncDir(s.root); err != nil {
+		s.rollbackCurrent(currentPath, previous, hasPrevious)
 		return fmt.Errorf("sync receipt index directory: %w", err)
 	}
 	return nil
+}
+
+func (s *Store) rollbackCurrent(currentPath string, previous []byte, hasPrevious bool) {
+	if hasPrevious {
+		if temp, err := s.stage(s.root, ".current-rollback-", previous); err == nil {
+			if err := s.ops.rename(temp, currentPath); err == nil {
+				_ = s.ops.remove(temp)
+				_ = s.syncDir(s.root)
+				return
+			}
+			_ = s.ops.remove(temp)
+		}
+	}
+	_ = s.ops.remove(currentPath)
 }
 
 func (s *Store) stage(dir, pattern string, data []byte) (string, error) {
