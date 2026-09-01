@@ -334,3 +334,123 @@ Runtime harness: **N/A**. The changed boundary is a pure request planner exercis
 Fingerprint reconciliation deliberately did not advance WU-12.3–12.6. The current `fingerprint.go` exposes only one policy-gated high-level step; it does not yet prove exact installed commit+pkgrel convergence, a closed source/checksum/build/artifact binding, `pacman -U`, or byte-exact PAM overlay application. The repository packaging files contain a static commit and patch checksum, and `packaging/` is already sync-declared, but no real resolved Galaxy catalog pin or production observation exists. Marking those tasks complete would invent the missing authority and hardware-dependent evidence.
 
 Rollback boundary: revert the four bootstrap implementation/test files and these two cumulative OpenSpec updates. No live package, service, boot, or fingerprint state was changed.
+
+### WU-11 partial apply — typed command surfaces and offline check boundary
+
+Baseline: `056a576c1931562e85408547e1f0cbb33729f7c1` on isolated branch
+`codex/rebuild-command-surfaces`. This slice used ordinary repository tooling
+only and did not touch `.atl` or any live host state.
+
+Completed evidence:
+
+- The existing offline checker covers the full WU-11 inventory and remains
+  observation-only. A new typed `CheckRequestFactory`/`NewCheckCommand` boundary
+  derives inventory from resolved host policy and parsed selection, then invokes
+  only `CheckObserver`; seeded post-apply drift reports its recorded backup path.
+- `internal/cli` parses and validates `apply`, `check`, `adopt`, `rollback`,
+  `checkpoint create`, `receipt show`, and `status`, including the preserved
+  compatibility flags and deterministic `--json` output selection.
+- `internal/app.CommandService` resolves known host and catalog authority before
+  command handlers. The unknown-host regression proves zero repository resolve,
+  hostname, and operation calls for an unknown explicit host.
+- `CommandHandlers` gives every surface a distinct typed handler and fails closed
+  when a handler is absent. Selection and removal slices are defensively copied,
+  and invalid receipt results are rejected rather than returned by alias.
+- The binary propagates selection, dry-run, host, rollback, adoption, and
+  checkpoint intent through the typed request; human and JSON output share typed
+  results, drift exits non-zero, lock contention remains exit 75, and arbitrary
+  runtime errors cannot expose raw output or secret-like values.
+- Production-independent `receipt show` and `status` read the atomically selected
+  current immutable receipt through XDG state and do not require a catalog.
+  No production catalog values were added.
+- `docs/rollback.md` documents inverse preconditions, immutable new receipts,
+  Snapper ownership, and dirty-worktree safety without claiming the still-missing
+  production rollback adapters.
+
+RED evidence:
+
+```text
+go test ./internal/cli ./internal/app -count=1
+internal/cli: Command/CommandApply/CommandCheck and command option fields undefined
+internal/app: CommandName/CommandRequest/CommandResult/NewCommandService undefined
+exit 1
+
+go test ./cmd/alex-cachyos -count=1
+cmd/alex-cachyos/main_test.go: runWithRuntime undefined
+exit 1
+
+go test ./internal/app -run TestCommandHandlers -count=1
+internal/app/commands_test.go: CommandHandlers undefined
+exit 1
+
+go test ./internal/app -run TestCheckCommandBuildsHostInventory -count=1
+internal/app/commands_test.go: CheckRequestFactoryFunc/NewCheckCommand undefined
+exit 1
+
+go test ./internal/app -run TestCommandServiceRejectsInvalidReceiptResults -count=1
+FAIL: invalid receipt result returned without error
+exit 1
+
+go test ./internal/app -run TestCommandServiceDoesNotRequireCatalog -count=1
+FAIL: receipt returned command runtime unavailable
+exit 1
+```
+
+Focused GREEN:
+
+```text
+go test ./internal/app -run 'Test(Check|Command)' -v -count=1
+PASS
+
+go test ./internal/cli ./cmd/alex-cachyos -v -count=1
+PASS
+
+go test ./internal/app -run 'TestCommandServiceRejectsInvalidReceiptResults|TestCommandServiceDoesNotRequireCatalog' -count=1
+PASS
+```
+
+Canonical verification:
+
+```text
+go test ./...                                      exit 0
+bash -n apply bin/alex-cachyos-webapp-launch lib/*.sh modules/*.sh
+                                                    exit 0
+python3 profile JSON validation                    exit 0
+go run ./tools/sync-assets --check                 exit 0
+go vet ./...                                       exit 0
+git diff --check                                   exit 0
+```
+
+Tasks proven complete in this slice: WU-11.1 and WU-11.5. WU-11.2,
+WU-11.3, WU-11.4, and WU-11.6 remain unchecked. The command grammar, typed
+routing, output, and current-receipt reads are implemented, but full production
+command execution still depends on:
+
+1. production catalog documents and composition (currently intentionally
+   absent; fixture values cannot become machine authority);
+2. the WU-14 verify-module inventory/observer needed by production `check`;
+3. receipt-by-ID loading, tagged-catalog object-read/isolation, and rollback
+   inverse execution/new-receipt publication;
+4. checkpoint committed-catalog/assets validation and production Git identity
+   composition; and
+5. complete apply/adopt plan construction from the final module inventory.
+
+No stubs claim success: unavailable production handlers return the typed,
+sanitized `command runtime unavailable` failure.
+
+Unit-owned paths:
+
+- `cmd/alex-cachyos/main.go`
+- `cmd/alex-cachyos/main_test.go`
+- `internal/cli/command.go`
+- `internal/cli/command_test.go`
+- `internal/cli/output.go`
+- `internal/app/commands.go`
+- `internal/app/commands_test.go`
+- `docs/rollback.md`
+- `openspec/changes/rebuild-reproducible-configurator/tasks.md`
+- `openspec/changes/rebuild-reproducible-configurator/apply-progress.md`
+
+Bounded partial-unit diff before staging: 10 files, 1,162 insertions, 12
+deletions. `.atl` has no status entries; the worktree-local `.codegraph/` index
+is excluded by the user's global Git ignore and is not part of the unit.
