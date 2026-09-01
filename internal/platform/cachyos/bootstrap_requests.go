@@ -55,6 +55,10 @@ const (
 )
 
 func BuildBootstrapRequestPlan(input BootstrapInputs) (BootstrapRequestPlan, error) {
+	return buildBootstrapRequestPlan(input, allBootstrapAuthorizations())
+}
+
+func buildBootstrapRequestPlan(input BootstrapInputs, authorization bootstrapAuthorizations) (BootstrapRequestPlan, error) {
 	want, err := embeddedPackageList("bootstrap/packages.want")
 	if err != nil {
 		return BootstrapRequestPlan{}, err
@@ -75,12 +79,18 @@ func BuildBootstrapRequestPlan(input BootstrapInputs) (BootstrapRequestPlan, err
 	}
 	plan.RemovalDelta = removalDelta(remove, input.FirefoxI18N, installed)
 	explicitTargets := append(append([]string(nil), want...), "google-chrome")
-	plan.ExplicitDelta = explicitDelta(explicitTargets, plan.MissingWanted, installed)
-	if err := plan.add(makeRequest("bootstrap.packages.install", "/usr/bin/pacman",
-		append([]string{"-Syu", "--needed", "--noconfirm"}, plan.MissingWanted...), runner.ScopeSystem, runner.NetworkRequired, nil)); err != nil {
-		return BootstrapRequestPlan{}, err
+	missingForExplicit := plan.MissingWanted
+	if !authorization.SystemUpdate {
+		missingForExplicit = nil
 	}
-	if len(plan.RemovalDelta) != 0 {
+	plan.ExplicitDelta = explicitDelta(explicitTargets, missingForExplicit, installed)
+	if authorization.SystemUpdate {
+		if err := plan.add(makeRequest("bootstrap.packages.install", "/usr/bin/pacman",
+			append([]string{"-Syu", "--needed", "--noconfirm"}, plan.MissingWanted...), runner.ScopeSystem, runner.NetworkRequired, nil)); err != nil {
+			return BootstrapRequestPlan{}, err
+		}
+	}
+	if authorization.PackageRemoval && len(plan.RemovalDelta) != 0 {
 		if err := plan.add(makeRequest("bootstrap.packages.remove", "/usr/bin/pacman",
 			append([]string{"-Rns", "--noconfirm"}, plan.RemovalDelta...), runner.ScopeSystem, runner.NetworkNone, nil)); err != nil {
 			return BootstrapRequestPlan{}, err
@@ -92,7 +102,7 @@ func BuildBootstrapRequestPlan(input BootstrapInputs) (BootstrapRequestPlan, err
 			return BootstrapRequestPlan{}, err
 		}
 	}
-	if input.Boot.MkinitcpioHasPlymouth {
+	if authorization.BootMutation && input.Boot.MkinitcpioHasPlymouth {
 		if err := plan.add(makeRequest(bootstrapBootPlymouthEdit, "/usr/bin/python3",
 			[]string{"-", mkinitcpioConfigPath}, runner.ScopeSystem, runner.NetworkNone, []byte(plymouthEditScript))); err != nil {
 			return BootstrapRequestPlan{}, err
@@ -101,7 +111,7 @@ func BuildBootstrapRequestPlan(input BootstrapInputs) (BootstrapRequestPlan, err
 			return BootstrapRequestPlan{}, err
 		}
 	}
-	if input.Boot.GrubHasSplash {
+	if authorization.BootMutation && input.Boot.GrubHasSplash {
 		if err := plan.add(makeRequest(bootstrapBootGRUBEdit, "/usr/bin/python3",
 			[]string{"-", grubDefaultPath}, runner.ScopeSystem, runner.NetworkNone, []byte(grubEditScript))); err != nil {
 			return BootstrapRequestPlan{}, err

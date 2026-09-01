@@ -1,0 +1,130 @@
+config_version = 13
+
+[bar.default]
+background_opacity = 0.52999998815357685
+capsule = true
+capsule_opacity = 0.79999998211860657
+capsule_padding = 8.0
+capsule_radius = 22
+center = [ "control-center", "clock", "media", "weather" ]
+concave_edge_corners = false
+contact_shadow = true
+end = [ "tray", "notifications", "network", "bluetooth", "volume", "brightness", "battery", "session", "bar" ]
+margin_ends = 0
+radius = 0
+scale = 1.0500000081956387
+start = [ "launcher", "workspaces", "sysmon", "ram", "status" ]
+thickness = 30
+
+[brightness]
+sync_all_monitors = true
+
+[control_center]
+width = 800
+
+[desktop_widgets]
+schema_version = 2
+widget_order = []
+
+    [desktop_widgets.grid]
+    cell_size = 16
+    major_interval = 4
+    visible = true
+
+    [desktop_widgets.widget]
+
+[dock]
+background_opacity = 0.44999998994171619
+concave_edge_corners = false
+cross_axis_padding = 0
+enabled = true
+icon_size = 30
+inactive_scale = 1.0
+layer = "overlay"
+magnification_scale = 1.2500000037252903
+main_axis_padding = 0
+margin_edge = 6
+radius = 9
+show_dots = true
+
+[location]
+auto_locate = true
+
+[lockscreen_widgets]
+enabled = false
+schema_version = 2
+widget_order = []
+
+[plugin_settings."felipeartur/ai-usagebar"]
+refresh_minutes = 1
+
+[plugins]
+enabled = [ "goodroot/noctwhspr", "felipeartur/ai-usagebar" ]
+
+[shell]
+# pkexec UI is Quickshell (qs -c polkit), not Noctalia's agent.
+polkit_agent = false
+corner_radius_scale = 1.4000000208616257
+screen_time_enabled = true
+telemetry_enabled = true
+
+    [shell.animation]
+    speed = 1.2500000186264515
+
+    [shell.panel]
+    borders = false
+    floating_offset = 100
+    open_near_click_control_center = true
+    shadow = false
+    transparency_mode = "glass"
+
+    [shell.screen_corners]
+    enabled = true
+    size = 40
+
+[theme]
+builtin = "Catppuccin"
+community_palette = "One Dark Two"
+mode = "auto"
+pure_black_dark = true
+source = "community"
+wallpaper_scheme = "m3-content"
+
+[wallpaper.default]
+path = "/usr/share/noctalia/assets/noctalia-wallpaper.png"
+
+[wallpaper.last]
+path = "/usr/share/noctalia/assets/noctalia-wallpaper.png"
+
+[weather]
+refresh_minutes = 5
+
+[widget.bar]
+type = "felipeartur/ai-usagebar:bar"
+vendor = "openai"
+
+[widget.bluetooth]
+show_label = true
+
+[widget.clock]
+format = "{:%H:%M:%S}"
+
+[widget.control-center]
+glyph = "assembly-filled"
+
+[widget.media]
+anchor = true
+hide_when_no_media = true
+max_length = 150
+
+[widget.network]
+show_label = false
+
+[widget.ram]
+label_show_units = false
+
+[widget.status]
+type = "goodroot/noctwhspr:status"
+
+[widget.weather]
+show_condition = false

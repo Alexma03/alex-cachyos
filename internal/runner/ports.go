@@ -99,7 +99,7 @@ func ValidateCommandRequest(request CommandRequest) error {
 		return invalidRequest("shell", "shell execution is forbidden")
 	}
 	for i, arg := range request.Argv {
-		if isSudo(arg) || isShellForm(arg) {
+		if isSudo(arg) || forbiddenShellForm(request.Executable, arg) {
 			return invalidRequest(fmt.Sprintf("argv[%d]", i), "contains a forbidden shell or sudo form")
 		}
 		if err := validateText(fmt.Sprintf("argv[%d]", i), arg); err != nil { return err }
@@ -172,6 +172,13 @@ func isShellForm(value string) bool {
 		return true
 	}
 	return strings.HasPrefix(value, "--command=") || strings.HasPrefix(value, "-c") && len(value) > 2
+}
+
+func forbiddenShellForm(executable, arg string) bool {
+	if filepath.Base(executable) == "pacman" && isShellExecutable(arg) {
+		return false
+	}
+	return isShellForm(arg)
 }
 
 func isSudo(value string) bool { return filepath.Base(value) == "sudo" }

@@ -77,9 +77,14 @@ func TestEmbeddedSourceMountsMatchRepository(t *testing.T) {
 		"templates/bootstrap/packages.remove",
 		"templates/desktop/packages.pacman",
 		"templates/devtools/pnpm.config.yaml",
-		"templates/hyprwhspr/config.json",
-		"templates/niri/config.kdl",
-		"templates/noctalia/settings.toml",
+		"templates/hosts/galaxy/fixedDisplays/niri/config.kdl",
+		"templates/hosts/galaxy/fixedDisplays/noctalia/settings.toml",
+		"templates/hosts/galaxy/fixedInputDevices/hyprwhspr/config.json",
+		"templates/hosts/galaxy/fixedInputDevices/noctalia/settings.toml",
+		"templates/hosts/galaxy/literalHomePaths/noctalia/settings.toml",
+		"templates/roles/workstation/hyprwhspr/config.json",
+		"templates/roles/workstation/niri/config.kdl",
+		"templates/roles/workstation/noctalia/settings.toml",
 		"templates/quickshell-polkit/shell.qml",
 		"templates/vicinae/cosmic-shortcuts-custom",
 		"overlays/galaxy/etc/pam.d/cosmic-greeter",
@@ -125,10 +130,10 @@ func TestCompositeFSRejectsMissingAndTraversal(t *testing.T) {
 	}{
 		{"templates/embed.go", fs.ErrNotExist},
 		{"overlays/embed.go", fs.ErrNotExist},
-		{"templates/niri/missing.kdl", fs.ErrNotExist},
+		{"templates/roles/workstation/niri/missing.kdl", fs.ErrNotExist},
 		{"templatesx/niri/config.kdl", fs.ErrNotExist},
-		{"../templates/niri/config.kdl", fs.ErrInvalid},
-		{"templates/niri/../../../etc/passwd", fs.ErrInvalid},
+		{"../templates/roles/workstation/niri/config.kdl", fs.ErrInvalid},
+		{"templates/roles/workstation/niri/../../../../../etc/passwd", fs.ErrInvalid},
 	} {
 		_, err := FS.Open(test.name)
 		if !errors.Is(err, test.want) {
@@ -150,7 +155,7 @@ func TestCompositeFSRejectsMissingAndTraversal(t *testing.T) {
 }
 
 func TestCompositeFSStatWorksForCatalog(t *testing.T) {
-	info, err := fs.Stat(FS, "templates/niri/config.kdl")
+	info, err := fs.Stat(FS, "templates/roles/workstation/niri/config.kdl")
 	if err != nil {
 		t.Fatalf("stat template: %v", err)
 	}

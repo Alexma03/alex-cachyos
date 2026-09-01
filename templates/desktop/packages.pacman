@@ -3,5 +3,8 @@
 # Polkit UI: Quickshell agent (Omarchy-style), not Noctalia's built-in panel.
 niri
 noctalia
+noctalia-greeter
+greetd
+accountsservice
 xwayland-satellite
 quickshell

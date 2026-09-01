@@ -41,10 +41,9 @@ var declaredAssets = []declaredAsset{
 	{path: "templates/bootstrap/", mode: assetEmbedded},
 	{path: "templates/desktop/", mode: assetEmbedded},
 	{path: "templates/devtools/", mode: assetEmbedded},
-	{path: "templates/hyprwhspr/", mode: assetEmbedded},
-	{path: "templates/niri/", mode: assetEmbedded},
-	{path: "templates/noctalia/", mode: assetEmbedded},
+	{path: "templates/hosts/", mode: assetEmbedded},
 	{path: "templates/quickshell-polkit/", mode: assetEmbedded},
+	{path: "templates/roles/", mode: assetEmbedded},
 	{path: "templates/vicinae/", mode: assetEmbedded},
 }
 

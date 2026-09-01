@@ -98,8 +98,8 @@
     },
     {
       "path": "templates/desktop/packages.pacman",
-      "size": 260,
-      "sha256": "bc202ac06acc72eb44ad656d52e5269bfe1d8f827fff463d846d404d6d131605"
+      "size": 300,
+      "sha256": "a41741b98e554fe7f7e45e31c51e9aa865d6853ae6725a2a5b977597131d4175"
     },
     {
       "path": "templates/devtools/mise.config.toml",
@@ -117,19 +117,29 @@
       "sha256": "fb84d0e4d1b06efd7c42d4ea8c7488c15b0de4d82bab133e7af525712e52ae6c"
     },
     {
-      "path": "templates/hyprwhspr/config.json",
-      "size": 353,
-      "sha256": "49691698177d5dd7ee0ec315e3389472f8f707bd1b6307b29a87134b14be2f42"
+      "path": "templates/hosts/galaxy/fixedDisplays/niri/config.kdl",
+      "size": 482,
+      "sha256": "a03a5eb3d43ff2fdbf4c51198114c8793ee85bfde49e51e62623ae70d213caf0"
     },
     {
-      "path": "templates/niri/config.kdl",
-      "size": 25709,
-      "sha256": "9ce9dde1aa48c3364b54b12f6f65f8200792e6d21e02df7d161d584dd9195ec9"
+      "path": "templates/hosts/galaxy/fixedDisplays/noctalia/settings.toml",
+      "size": 2612,
+      "sha256": "ffb577f467b7ebf98efe273cc10572195ddf430583df7d5eacf445b1c797fb37"
     },
     {
-      "path": "templates/noctalia/settings.toml",
-      "size": 5361,
-      "sha256": "05caeec9411add669688b58f96ecd251f7a83c2d6d1d7b078027264bfd002719"
+      "path": "templates/hosts/galaxy/fixedInputDevices/hyprwhspr/config.json",
+      "size": 112,
+      "sha256": "7c858bf72f88ccc7a3dfbcfae42be782fcd2f21298aef721e742826112a48e6f"
+    },
+    {
+      "path": "templates/hosts/galaxy/fixedInputDevices/noctalia/settings.toml",
+      "size": 99,
+      "sha256": "6bf78b54122ce9956ea5592cb6a71b8ec74f1dbdda28d6617171d8e07b6e1482"
+    },
+    {
+      "path": "templates/hosts/galaxy/literalHomePaths/noctalia/settings.toml",
+      "size": 188,
+      "sha256": "a073b61a3b839b6e23447a0494458b72d0e5b0af5d0bf325d99e269758acc703"
     },
     {
       "path": "templates/quickshell-polkit/PolkitModel.js",
@@ -140,6 +150,21 @@
       "path": "templates/quickshell-polkit/shell.qml",
       "size": 9504,
       "sha256": "f47d64af6773679a9347f6cc2d81cb677fd077c1b2cf716a5dda4a504a50ac55"
+    },
+    {
+      "path": "templates/roles/workstation/hyprwhspr/config.json",
+      "size": 276,
+      "sha256": "e67635cb752a98f2c1fe465dc325f2cb820c7abed601e29d5ca9b7c233318564"
+    },
+    {
+      "path": "templates/roles/workstation/niri/config.kdl",
+      "size": 25298,
+      "sha256": "ad74725e0c93a2e40e6715935d2698dba98289f973de70dd28a561fcf3053c86"
+    },
+    {
+      "path": "templates/roles/workstation/noctalia/settings.toml",
+      "size": 2533,
+      "sha256": "99440c89d680126cc383f3f60b71aef7c0ed7cfd9f3085680e22dc30827c500f"
     },
     {
       "path": "templates/vicinae/99-vicinae-cosmic.conf",

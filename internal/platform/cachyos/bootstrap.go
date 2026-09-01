@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"alex-cachyos/internal/catalog"
 	"alex-cachyos/internal/planner"
 	"alex-cachyos/internal/runner"
 )
@@ -52,12 +53,26 @@ type BootstrapObservation struct {
 // planner step and adds typed steps that have no command request yet (LTS
 // deferral, GRUB publication, and the zsh marker-block rewrite).
 func BuildBootstrapModule(observation BootstrapObservation) (planner.Module, error) {
+	return buildBootstrapModule(observation, allBootstrapAuthorizations())
+}
+
+type bootstrapAuthorizations struct {
+	SystemUpdate   bool
+	PackageRemoval bool
+	BootMutation   bool
+}
+
+func allBootstrapAuthorizations() bootstrapAuthorizations {
+	return bootstrapAuthorizations{SystemUpdate: true, PackageRemoval: true, BootMutation: true}
+}
+
+func buildBootstrapModule(observation BootstrapObservation, authorization bootstrapAuthorizations) (planner.Module, error) {
 	input, installed, explicit, err := requestInput(observation)
 	if err != nil {
 		return planner.Module{}, err
 	}
 
-	requestPlan, err := BuildBootstrapRequestPlan(input)
+	requestPlan, err := buildBootstrapRequestPlan(input, authorization)
 	if err != nil {
 		return planner.Module{}, err
 	}
@@ -104,6 +119,44 @@ func BuildBootstrapPlan(observation BootstrapObservation) (planner.Plan, error) 
 		return planner.Plan{}, err
 	}
 	return planner.BuildPlan([]planner.Module{module}, planner.Selection{Only: []string{bootstrapModuleName}})
+}
+
+func buildBootstrapModuleForPolicy(policy catalog.ResolvedHostPolicy, evidence PlatformEvidence) (planner.Module, error) {
+	module := planner.Module{Name: bootstrapModuleName, Enabled: moduleEnabled(policy, bootstrapModuleName)}
+	if !module.Enabled {
+		return module, nil
+	}
+	authorization := bootstrapAuthorizations{}
+	var blocked []planner.Step
+	for _, gated := range []struct {
+		capability catalog.RiskCapability
+		enable     func()
+	}{
+		{catalog.RiskBootstrapSystemUpdate, func() { authorization.SystemUpdate = true }},
+		{catalog.RiskBootstrapPackageRemoval, func() { authorization.PackageRemoval = true }},
+		{catalog.RiskBootstrapBootMutation, func() { authorization.BootMutation = true }},
+	} {
+		observed, allowed, err := capabilityEvidence(policy, evidence, gated.capability)
+		if err != nil {
+			return planner.Module{}, err
+		}
+		if !allowed {
+			continue
+		}
+		if observed.State == EvidenceReady {
+			gated.enable()
+			continue
+		}
+		blocked = append(blocked, blockedPolicyStep(bootstrapModuleName, gated.capability, observed))
+	}
+
+	module, err := buildBootstrapModule(evidence.Bootstrap, authorization)
+	if err != nil {
+		return planner.Module{}, err
+	}
+	module.Enabled = true
+	module.Steps = append(module.Steps, blocked...)
+	return module, nil
 }
 
 // requestInput translates the richer observation into the request kernel's

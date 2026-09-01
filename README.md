@@ -120,9 +120,8 @@ templates/bootstrap/
 templates/devtools/
 templates/apps/
 templates/vicinae/
-templates/niri/
-templates/noctalia/
-templates/hyprwhspr/
+templates/hosts/galaxy/{niri,noctalia,hyprwhspr}/
+templates/roles/workstation/{niri,noctalia,hyprwhspr}/
 templates/quickshell-polkit/
 templates/desktop/
 profiles/

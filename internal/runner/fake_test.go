@@ -31,6 +31,20 @@ func TestValidateCommandRequest(t *testing.T) {
 	for _, tc := range cases { t.Run(tc.name, func(t *testing.T) { request := base; tc.edit(&request); if err := ValidateCommandRequest(request); err == nil { t.Fatal("unsafe request accepted") } }) }
 }
 
+func TestValidateCommandRequestAcceptsPacmanPackageNamedAfterShell(t *testing.T) {
+	request := testRequest("bootstrap.packages.explicit", "-D", "--asexplicit", "zsh")
+	request.Executable = "/usr/bin/pacman"
+	request.Scope = ScopeSystem
+	if err := ValidateCommandRequest(request); err != nil {
+		t.Fatalf("valid pacman argv rejected: %v", err)
+	}
+
+	control := testRequest("dispatch", "zsh")
+	if err := ValidateCommandRequest(control); err == nil {
+		t.Fatal("shell-named argument accepted outside the pacman data seam")
+	}
+}
+
 func TestFakeRunnerMatchesInOrderAndCopies(t *testing.T) {
 	fake := NewFakeRunner(
 		Expectation{Operation: "observe", Argv: []string{"--name", "fixture"}, Result: CommandResult{Stdout: []byte("ok")}, Mutate: func(state *FixtureState) { state.Values["observed"] = "yes" }},

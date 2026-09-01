@@ -1,9 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/goodroot/hyprwhspr/main/share/config.schema.json",
-  "keyboard_device_names": [
-    "AT Translated Set 2 keyboard",
-    "vicinae-snippet-virtual-keyboard"
-  ],
+  "keyboard_device_names": [],
   "transcription_backend": "onnx-asr",
   "audio_ducking": true,
   "primary_shortcut": "RCTRL",

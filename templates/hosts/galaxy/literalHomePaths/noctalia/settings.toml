@@ -1,0 +1,4 @@
+[theme.templates.user.noctwhspr_mic_osd]
+    input_path = "/home/alex/.config/noctalia/templates/noctwhspr-mic-osd.css"
+    output_path = "/home/alex/.config/hyprwhspr/theme/mic-osd.css"
+
