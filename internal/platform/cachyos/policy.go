@@ -28,8 +28,12 @@ type CapabilityEvidence struct {
 // PlatformEvidence groups read-only observations consumed by CachyOS module
 // factories. Capabilities never grant authority; the catalog policy does.
 type PlatformEvidence struct {
-	Capabilities map[catalog.RiskCapability]CapabilityEvidence
-	Bootstrap    BootstrapObservation
+	Capabilities    map[catalog.RiskCapability]CapabilityEvidence
+	Bootstrap       BootstrapObservation
+	Devtools        DevtoolsObservation
+	Apps            AppsObservation
+	AppsIconFetcher IconFetcher
+	Vicinae         VicinaeObservation
 }
 
 // ObservationRequest is the canonical, immutable-by-copy list of authorized
@@ -63,11 +67,39 @@ func BuildModules(policy catalog.ResolvedHostPolicy, evidence PlatformEvidence) 
 	if err != nil {
 		return nil, err
 	}
+	devtools := planner.Module{Name: DevtoolsModuleName, Enabled: moduleEnabled(policy, DevtoolsModuleName)}
+	if devtools.Enabled {
+		devtools, err = BuildDevtoolsModule(evidence.Devtools)
+		if err != nil {
+			return nil, err
+		}
+	}
+	apps := planner.Module{Name: AppsModuleName, Enabled: moduleEnabled(policy, AppsModuleName)}
+	if apps.Enabled {
+		appsObservation := evidence.Apps
+		// The merged policy is the sole pin authority at this boundary. Runtime
+		// observations may describe local state, but cannot replace desired pins.
+		appsObservation.AURPins = nil
+		appsObservation.Catalog = &policy.Desired
+		apps, err = BuildAppsModule(appsObservation, evidence.AppsIconFetcher)
+		if err != nil {
+			return nil, err
+		}
+	}
+	vicinae := planner.Module{Name: VicinaeModuleName, Enabled: moduleEnabled(policy, VicinaeModuleName)}
+	if vicinae.Enabled {
+		vicinaeObservation := evidence.Vicinae
+		vicinaeObservation.Catalog = &policy.Desired
+		vicinae, err = BuildVicinaeModule(vicinaeObservation)
+		if err != nil {
+			return nil, err
+		}
+	}
 	desktop, err := buildDesktopModule(policy, evidence)
 	if err != nil {
 		return nil, err
 	}
-	return []planner.Module{bootstrap, fingerprint, desktop}, nil
+	return []planner.Module{bootstrap, fingerprint, devtools, apps, vicinae, desktop}, nil
 }
 
 // BuildHostPlan runs the pure fake/runtime planning path for the implemented

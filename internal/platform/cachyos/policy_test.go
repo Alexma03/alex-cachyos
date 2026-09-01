@@ -1,6 +1,7 @@
 package cachyos
 
 import (
+	"context"
 	"encoding/json"
 	"reflect"
 	"slices"
@@ -10,6 +11,143 @@ import (
 	"alex-cachyos/internal/catalog"
 	"alex-cachyos/internal/planner"
 )
+
+func TestBuildModulesWiresEnabledReproducibleFactoriesFromResolvedPolicy(t *testing.T) {
+	policyPins := testAppsPins()
+	policyPins[VicinaePackageName] = catalog.AURLocalPin{
+		SourceCommit: testVicinaeCommit,
+		PatchSHA256:  testVicinaePatchSHA,
+	}
+	policy := galaxyPolicy("", "", false)
+	policy.Desired.Modules = catalog.ModuleSet{
+		"bootstrap":   true,
+		"fingerprint": true,
+		"devtools":    true,
+		"apps":        true,
+		"vicinae":     true,
+		"desktop":     true,
+	}
+	policy.Desired.Pins = &catalog.Pins{AURLocal: policyPins}
+
+	evidence := readyEvidence()
+	evidence.Devtools = DevtoolsObservation{HomeRoot: t.TempDir()}
+	evidence.Apps = AppsObservation{
+		HomeRoot: t.TempDir(),
+		UserName: "alex",
+		AURPins: map[string]catalog.AURLocalPin{
+			"warp-terminal-bin": {SourceCommit: strings.Repeat("0", 40), PatchSHA256: strings.Repeat("f", 64)},
+		},
+	}
+	evidence.AppsIconFetcher = embeddedAppsIconFetcher(t)
+	evidence.Vicinae = newVicinaeObservation(t, []byte(testVicinaeStock))
+	evidence.Vicinae.Catalog = &catalog.Catalog{Pins: &catalog.Pins{AURLocal: map[string]catalog.AURLocalPin{
+		VicinaePackageName: {SourceCommit: strings.Repeat("0", 40), PatchSHA256: strings.Repeat("f", 64)},
+	}}}
+
+	modules, err := BuildModules(policy, evidence)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantNames := []string{"bootstrap", "fingerprint", "devtools", "apps", "vicinae", "desktop"}
+	gotNames := make([]string, len(modules))
+	for i, module := range modules {
+		gotNames[i] = module.Name
+		if !module.Enabled {
+			t.Errorf("module %q is disabled", module.Name)
+		}
+	}
+	if !reflect.DeepEqual(gotNames, wantNames) {
+		t.Fatalf("module order = %#v, want %#v", gotNames, wantNames)
+	}
+	for _, check := range []struct {
+		module string
+		step   string
+	}{
+		{DevtoolsModuleName, "devtools.mise.install"},
+		{AppsModuleName, "apps.aur.warp-terminal-bin.checkout"},
+		{VicinaeModuleName, "vicinae.package.checkout"},
+	} {
+		if !hasStep(moduleNamed(t, modules, check.module), check.step) {
+			t.Fatalf("module %q lacks reproducible factory step %q", check.module, check.step)
+		}
+	}
+	assertStepSourceCommit(t, moduleNamed(t, modules, AppsModuleName), "apps.aur.warp-terminal-bin.checkout", policyPins["warp-terminal-bin"].SourceCommit)
+	assertStepSourceCommit(t, moduleNamed(t, modules, VicinaeModuleName), "vicinae.package.checkout", policyPins[VicinaePackageName].SourceCommit)
+	assertStepPatchSHA256(t, moduleNamed(t, modules, AppsModuleName), "apps.aur.warp-terminal-bin.patch.verify", policyPins["warp-terminal-bin"].PatchSHA256)
+	assertStepPatchSHA256(t, moduleNamed(t, modules, VicinaeModuleName), "vicinae.package.patch.verify", policyPins[VicinaePackageName].PatchSHA256)
+
+	plan, err := planner.BuildPlan(modules, planner.Selection{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	lastModuleIndex := map[string]int{}
+	for index, step := range plan.Steps {
+		lastModuleIndex[step.Module] = index
+	}
+	if !(lastModuleIndex[DevtoolsModuleName] < lastModuleIndex[AppsModuleName] &&
+		lastModuleIndex[AppsModuleName] < lastModuleIndex[VicinaeModuleName] &&
+		lastModuleIndex[VicinaeModuleName] < lastModuleIndex["desktop"]) {
+		t.Fatalf("combined module order = %#v", lastModuleIndex)
+	}
+}
+
+func TestBuildModulesKeepsDisabledFactoriesInert(t *testing.T) {
+	policy := galaxyPolicy("desktop", "", false)
+	called := false
+	evidence := readyEvidence()
+	evidence.AppsIconFetcher = IconFetcherFunc(func(context.Context, IconFetchRequest) ([]byte, error) {
+		called = true
+		return nil, nil
+	})
+
+	modules, err := BuildModules(policy, evidence)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{DevtoolsModuleName, AppsModuleName, VicinaeModuleName} {
+		module := moduleNamed(t, modules, name)
+		if module.Enabled || len(module.Steps) != 0 {
+			t.Fatalf("disabled module %q was constructed: %#v", name, module)
+		}
+	}
+	if called {
+		t.Fatal("disabled apps module crossed the icon-fetch network seam")
+	}
+}
+
+func assertStepSourceCommit(t *testing.T, module planner.Module, stepID, want string) {
+	t.Helper()
+	step := stepByID(module, stepID)
+	if step == nil {
+		t.Fatalf("missing step %q", stepID)
+	}
+	var desired struct {
+		SourceCommit string `json:"sourceCommit"`
+	}
+	if err := json.Unmarshal(step.Desired, &desired); err != nil {
+		t.Fatal(err)
+	}
+	if desired.SourceCommit != want {
+		t.Fatalf("step %q source commit = %q, want resolved policy pin %q", stepID, desired.SourceCommit, want)
+	}
+}
+
+func assertStepPatchSHA256(t *testing.T, module planner.Module, stepID, want string) {
+	t.Helper()
+	step := stepByID(module, stepID)
+	if step == nil {
+		t.Fatalf("missing step %q", stepID)
+	}
+	var desired struct {
+		PatchSHA256 string `json:"patchSHA256"`
+	}
+	if err := json.Unmarshal(step.Desired, &desired); err != nil {
+		t.Fatal(err)
+	}
+	if desired.PatchSHA256 != want {
+		t.Fatalf("step %q patch SHA-256 = %q, want resolved policy pin %q", stepID, desired.PatchSHA256, want)
+	}
+}
 
 func TestCapabilityPolicyMatrix(t *testing.T) {
 	tests := []struct {
