@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 
 	"alex-cachyos/internal/catalog"
@@ -87,6 +88,30 @@ func TestBuildPackagePlanFailsClosedOnIncompleteOrUntrustedAuthority(t *testing.
 	}
 }
 
+func TestInstallPackagesUsesOnlyTypedExactCatalogRequests(t *testing.T) {
+	fixture := loadPackageCatalog(t)
+	home := filepath.Join(t.TempDir(), "home")
+	plan, err := BuildPackagePlan(PackagePlanInput{
+		Pins: fixture.Pins, SettingsPath: filepath.Join(home, ".pi", "agent", "settings.json"), IntendedLayout: LayoutAgent,
+		Checkout: CheckoutReference{Name: "gentle-pi", Path: filepath.Join(home, "Projects", "gentle-pi"), ReadOnly: true, Pin: fixture.CheckoutPins["gentle-pi"]},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	installer := &fixturePackageInstaller{}
+	if err := InstallPackages(context.Background(), plan, installer); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(installer.requests, plan.Installs) {
+		t.Fatalf("install requests = %#v, want %#v", installer.requests, plan.Installs)
+	}
+	for _, request := range installer.requests {
+		if request.Mode != InstallExactCatalogPin || strings.Contains(request.Spec, "update") || strings.Contains(request.Spec, "--all") {
+			t.Fatalf("non-exact convergence request = %#v", request)
+		}
+	}
+}
+
 func TestObservePackagesProbesBothLayoutsAndReportsDesiredVersionDrift(t *testing.T) {
 	fixture := loadPackageCatalog(t)
 	home := filepath.Join(t.TempDir(), "home")
@@ -147,6 +172,15 @@ func TestObservePackagesFailsClosedWhenBothLayoutsContainDesiredPackages(t *test
 type fixturePackageProbe struct {
 	byLayout map[PackageLayout]map[string]string
 	roots    []string
+}
+
+type fixturePackageInstaller struct {
+	requests []PackageInstall
+}
+
+func (installer *fixturePackageInstaller) InstallExact(_ context.Context, request PackageInstall) error {
+	installer.requests = append(installer.requests, request)
+	return nil
 }
 
 func (probe *fixturePackageProbe) Probe(_ context.Context, request PackageProbeRequest) (map[string]string, error) {

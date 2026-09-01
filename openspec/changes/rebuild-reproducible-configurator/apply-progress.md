@@ -599,3 +599,90 @@ artifact/pkgrel/source-date pin adapter and the parent module dependency ranks
 are not yet fully encoded. WU-12.6 remains unchecked because it is the closure
 row for the complete WU-12, including WU-12.4. Packaging and overlays were
 already sync-declared and `sync-assets --check` remains green.
+## WU-15.1–15.5 — Target-independent Pi core subset (2026-09-01)
+
+Status: **generic fixture contract implemented and verified; zero WU-15 rows
+advanced and no production or live-integration claim made**. Baseline was
+`5db9f20`; the work ran only in the isolated `wu15-pi-core` worktree and never
+opened or mutated a real `~/.pi` tree.
+
+Implemented evidence:
+
+- `internal/pi/packages.go` validates the closed nine-package npm inventory with
+  exact semver pins plus the literal `../../Projects/gentle-pi` package. The
+  local reference must resolve from `.pi/agent/settings.json` to the named,
+  read-only selected checkout and is never copied. A narrow typed installer port
+  exposes exact-catalog requests only—there is no update-all or arbitrary argv
+  operation. Read-only observation probes both documented npm layouts, reports
+  ambiguity, and keeps desired pins separate from resolved versions.
+- `internal/pi/render.go` renders the exact minimal settings shape as stable
+  one-line JSON with one trailing newline. Only `@HOME@` and `@USER@` resolve;
+  empty, multiline, or unknown-token values fail before publication. The valid
+  runtime-owned changelog marker remains in rendered bytes but is excluded from
+  the desired-state digest and drift decision.
+- `internal/pi/routes.go` validates the enum-like set of exactly 23 route names
+  and renders both `{model, effort}` and `{model, thinking}` views from one typed
+  source. Lean/task behavior and both false flags are explicit. Drift identifies
+  the changed file, route, field, and expected value; missing explicit false
+  fields and noncanonical encodings also drift.
+- `internal/pi/persona.go` renders generic typed persona and background values
+  canonically. All render outputs carry SHA-256 digests bound to their intended
+  bytes (or, for settings, to desired fields excluding runtime metadata).
+- Fixtures contain only conspicuously synthetic versions, remotes, route values,
+  persona, and background values. Tests use `t.TempDir()` homes and no production
+  host identity, user data, credentials, hardware value, or live Pi state.
+
+RED evidence (bounded):
+
+```text
+go test ./internal/pi -run 'Test(BuildPackagePlan|ObservePackages)' -count=1
+build failed because the package-plan/probe API did not exist
+
+go test ./internal/pi -run 'Test(Render|CheckRoute)' -count=1
+build failed because the render/route/persona API did not exist
+
+go test ./internal/pi -run TestRenderSettingsRejectsForgedPackagePlan -count=1
+failed because a forged package spec passed the initial shallow plan validator
+
+go test ./internal/pi -run TestInstallPackagesUsesOnlyTypedExactCatalogRequests -count=1
+build failed: undefined: InstallPackages
+```
+
+The forged-plan regression was fixed by revalidating the exact package set,
+spec/version relationship, local checkout identity, commit shape, ordering, and
+install requests at every consumer boundary. The explicit-false regression was
+fixed with presence-aware validation so an omitted `debug: false` cannot compare
+equal merely through Go zero values.
+
+Focused and canonical verification:
+
+```text
+go test ./internal/pi -count=1                                                        exit 0
+go test ./...                                                                         exit 0
+go vet ./...                                                                          exit 0
+go run ./tools/sync-assets --check                                                    exit 0
+bash -n apply bin/alex-cachyos-webapp-launch lib/*.sh modules/*.sh                    exit 0
+python3 profile JSON validation                                                       exit 0
+git diff --check                                                                      exit 0
+```
+
+Rows remain unchecked because the repository does not contain authoritative
+production versions for all nine npm packages, the production `{model, level}`
+assignments for the 23 routes, or production persona/background values. A
+fixture golden cannot substitute for that catalog authority, so WU-15.1–15.5
+are only partially evidenced and WU-15.6 integration is intentionally untouched.
+
+Unit-owned paths:
+
+- `internal/pi/packages.go`
+- `internal/pi/packages_test.go`
+- `internal/pi/persona.go`
+- `internal/pi/persona_test.go`
+- `internal/pi/render.go`
+- `internal/pi/render_test.go`
+- `internal/pi/routes.go`
+- `internal/pi/routes_test.go`
+- `internal/pi/testdata/package-catalog.yaml`
+- `internal/pi/testdata/render-authority.json`
+- `openspec/changes/rebuild-reproducible-configurator/tasks.md`
+- `openspec/changes/rebuild-reproducible-configurator/apply-progress.md`

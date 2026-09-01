@@ -230,6 +230,15 @@ Specs: pi-configuration (Exact-pinned Pi package set; Desired pins versus resolv
 - [ ] TRIANGULATE: hand-edit one route level in a fixture `models.json` → `check` reports the drifted route with file and expected value; both files byte-compare to rendered expectations. <!-- sdd-owner: implementation -->
 - [ ] Verify and prepare the work-unit diff: `go test ./... && go vet ./... && go run ./tools/sync-assets --check` exit 0; transition guard exits 0; `~/.pi` untouched in tests (fixture homes only); baseline unchanged; record the unit-owned path list and `git diff --stat` as the bounded diff handoff. Staging/committing is deferred: it happens only after a separate explicit user authorization, with explicit unit-owned paths and never `git add -A`. <!-- sdd-owner: implementation -->
 
+Target-independent partial evidence (2026-09-01): `internal/pi` now has a typed
+exact-pin package/install/probe boundary and canonical fixture-driven renderers
+for minimal settings, the exact 23 dual routes, persona, and background state.
+No WU-15 row is advanced: the repository still lacks authoritative production
+versions for all nine npm packages, production `{model, level}` assignments,
+and production persona/background values. The synthetic fixture proves the
+generic contract only; it is not machine authority, live evidence, or WU-15.6
+integration.
+
 ## WU-16 — Managed-asset refresh, AGENTS/APPEND ownership, forbidden-path centralization
 
 Specs: pi-configuration (AGENTS.md user-owned, APPEND_SYSTEM.md package-managed; Package-managed assets verified, never vendored), security-boundaries (No secret values anywhere). Design §9.3, §7.1, §12.

@@ -4,6 +4,7 @@ package pi
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -29,6 +30,7 @@ var requiredNPMPackages = []string{
 
 var (
 	ErrPackageAuthority = errors.New("invalid Pi package authority")
+	ErrPackageInstall   = errors.New("Pi package install failed")
 	ErrPackageProbe     = errors.New("invalid Pi package observation")
 )
 
@@ -89,6 +91,10 @@ type PackagePlan struct {
 	IntendedLayout PackageLayout
 	Desired        []DesiredPackage
 	Installs       []PackageInstall
+}
+
+type PackageInstaller interface {
+	InstallExact(context.Context, PackageInstall) error
 }
 
 func RequiredPackageNames() []string {
@@ -153,6 +159,24 @@ func BuildPackagePlan(input PackagePlanInput) (PackagePlan, error) {
 		plan.Installs[i] = PackageInstall{Mode: InstallExactCatalogPin, Name: item.Name, Source: item.Source, Spec: item.Spec, ResolvedPath: item.ResolvedPath}
 	}
 	return clonePackagePlan(plan), nil
+}
+
+// InstallPackages hands a validated desired-state plan to a narrow typed port.
+// The port has no update-all or arbitrary argv operation, so callers cannot turn
+// package convergence into an implicit mutable upgrade.
+func InstallPackages(ctx context.Context, plan PackagePlan, installer PackageInstaller) error {
+	if installer == nil || !validPackagePlan(plan) {
+		return ErrPackageInstall
+	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	for _, request := range plan.Installs {
+		if err := installer.InstallExact(ctx, request); err != nil {
+			return fmt.Errorf("%w: %s", ErrPackageInstall, request.Name)
+		}
+	}
+	return nil
 }
 
 type PackageProbeRequest struct {
@@ -312,8 +336,33 @@ func validateObservedVersions(plan PackagePlan, versions map[string]string) erro
 }
 
 func validPackagePlan(plan PackagePlan) bool {
-	if !canonicalAbsolute(plan.HomeRoot) || !canonicalAbsolute(plan.SettingsPath) || (plan.IntendedLayout != LayoutAgent && plan.IntendedLayout != LayoutLegacy) || len(plan.Desired) != len(requiredNPMPackages)+1 {
+	home, err := piHomeFromSettings(plan.SettingsPath)
+	if err != nil || home != plan.HomeRoot || (plan.IntendedLayout != LayoutAgent && plan.IntendedLayout != LayoutLegacy) || len(plan.Desired) != len(requiredNPMPackages)+1 || len(plan.Installs) != len(plan.Desired) {
 		return false
+	}
+	wantNames := RequiredPackageNames()
+	for i, item := range plan.Desired {
+		if item.Name != wantNames[i] {
+			return false
+		}
+		switch item.Source {
+		case PackageNPM:
+			if catalog.ValidateNpmPin(item.Name, catalog.NpmPin{Name: item.Name, Version: item.DesiredVersion}) != nil || item.Spec != "npm:"+item.Name+"@"+item.DesiredVersion || item.ResolvedPath != "" || item.CheckoutCommit != "" {
+				return false
+			}
+		case PackageLocalPath:
+			decodedCommit, decodeErr := hex.DecodeString(item.CheckoutCommit)
+			expectedPath := filepath.Clean(filepath.Join(filepath.Dir(plan.SettingsPath), filepath.FromSlash(catalog.LocalPiPackagePath)))
+			if item.Name != gentlePiPackageName || item.Spec != catalog.LocalPiPackagePath || item.DesiredVersion != "" || item.ResolvedPath != expectedPath || !canonicalAbsolute(item.ResolvedPath) || decodeErr != nil || len(decodedCommit) != 20 {
+				return false
+			}
+		default:
+			return false
+		}
+		install := plan.Installs[i]
+		if install.Mode != InstallExactCatalogPin || install.Name != item.Name || install.Source != item.Source || install.Spec != item.Spec || install.ResolvedPath != item.ResolvedPath {
+			return false
+		}
 	}
 	return true
 }
