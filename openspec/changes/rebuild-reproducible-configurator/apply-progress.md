@@ -537,3 +537,65 @@ git diff --check                                   exit 0
 Tasks proven complete in this slice: WU-11.2, WU-11.3, WU-11.4, and WU-11.6. Parent ledger: **69/123 checked, 54 unchecked**. Production execution still correctly requires the later real catalog/host composition; synthetic fixtures remain tests rather than machine authority.
 
 Rollback boundary: revert the WU-11-owned product/test files and these two cumulative OpenSpec updates. No live package, file, service, Git tag, or host state was changed by verification.
+## WU-12.3–12.6 continuation — target-independent fingerprint pipeline (2026-09-01)
+
+Status: **WU-12.3 and WU-12.5 are implemented and verified from resolved fixture
+authority; WU-12.4 and WU-12.6 remain open.** The cumulative parent ledger is
+**71 checked / 52 unchecked / 123 total** in the integrated worktree.
+
+### RED → GREEN → TRIANGULATE → REFACTOR evidence
+
+- **RED:** `go test ./internal/platform/cachyos -run 'TestFingerprint' -count=1`
+  failed to compile because `BuildFingerprintPlan`, the resolved pin and
+  observation types, and the typed fingerprint operations did not exist.
+- **GREEN:** the planner validates the embedded PKGBUILD SHA-256, exact upstream
+  commit, pkgrel, patch SHA-256, provides/conflicts declarations, deterministic
+  build environment, and exact artifact SHA-256 before the sole system install
+  request: typed `/usr/bin/pacman -U --needed --noconfirm <absolute-local-artifact>`.
+  All requests pass `runner.ValidateCommandRequest`; no shell, sudo, mutable
+  AUR install, or live mutation is used.
+- **TRIANGULATE:** missing/unsafe pins fail closed; a matching installed
+  sourceCommit+pkgrel plus byte/mode-exact PAM overlays produces zero command
+  requests and satisfied dispositions; default-denied policy never consumes an
+  unsafe pin. Replacement of an installed package requires an exact local
+  rollback artifact and SHA-256. PAM created/adopted ownership binds only to
+  remove-file or the exact one-time backup restore inverse.
+- **REFACTOR:** `PlatformEvidence.Fingerprint` is a target-independent resolved
+  boundary. Runtime observations cannot become desired authority. The
+  production Galaxy catalog adapter and actual artifact pin remain deliberately
+  absent rather than being invented.
+
+The Galaxy acceptance fixture now supplies explicit synthetic resolved pins and
+exact overlay observations; its golden records the expanded fingerprint step
+order only. This is fixture evidence, not a live-host or full seven-module
+acceptance claim. The portable fixture golden is unchanged and default-deny
+still emits no fingerprint steps.
+
+### Verification
+
+```text
+go test ./internal/platform/cachyos -run 'TestFingerprint' -count=1   exit 0
+go test ./internal/platform/cachyos -count=1                          exit 0
+go test ./internal/acceptance -count=1                                exit 0
+go test ./...                                                          exit 0
+bash -n apply bin/alex-cachyos-webapp-launch lib/*.sh modules/*.sh    exit 0
+python3 profile JSON validation                                       exit 0
+go run ./tools/sync-assets --check                                    exit 0
+go vet ./...                                                           exit 0
+git diff --check                                                       exit 0
+```
+
+The first canonical `go test ./...` run exposed the acceptance fixture's
+missing resolved fingerprint evidence. That single diagnosed failure was fixed
+by adding explicit synthetic pins and overlay observations; the next focused
+acceptance run and canonical chain passed.
+
+Runtime harness: **N/A**. This slice is a pure typed planner exercised through
+fixture evidence. Running makepkg or `pacman -U` would mutate or depend on the
+developer host and violate the explicit no-live-mutation boundary.
+
+WU-12.4 remains unchecked because the production catalog has no authoritative
+artifact/pkgrel/source-date pin adapter and the parent module dependency ranks
+are not yet fully encoded. WU-12.6 remains unchecked because it is the closure
+row for the complete WU-12, including WU-12.4. Packaging and overlays were
+already sync-declared and `sync-assets --check` remains green.

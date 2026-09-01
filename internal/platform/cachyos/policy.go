@@ -30,6 +30,7 @@ type CapabilityEvidence struct {
 type PlatformEvidence struct {
 	Capabilities    map[catalog.RiskCapability]CapabilityEvidence
 	Bootstrap       BootstrapObservation
+	Fingerprint     FingerprintObservation
 	Devtools        DevtoolsObservation
 	Apps            AppsObservation
 	AppsIconFetcher IconFetcher

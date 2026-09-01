@@ -3,6 +3,8 @@ package acceptance
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,7 +21,7 @@ func TestCatalogFixturesMatchAcceptanceGoldens(t *testing.T) {
 	for _, fixture := range []struct{ name, host string }{{"galaxy-fixture", "galaxy"}, {"portable-synthetic", "portable-synthetic"}} {
 		t.Run(fixture.name, func(t *testing.T) {
 			policy := loadPolicy(t, fixture.host)
-			evidence := readyPlatformEvidence()
+			evidence := readyPlatformEvidence(t)
 			plan, err := cachyos.BuildHostPlan(policy, evidence)
 			if err != nil {
 				t.Fatal(err)
@@ -74,7 +76,7 @@ func TestCatalogFixturesMatchAcceptanceGoldens(t *testing.T) {
 
 func TestHardwareFreeFixtureConvergenceAndRollbackRefusal(t *testing.T) {
 	policy := loadPolicy(t, "portable-synthetic")
-	plan, err := cachyos.BuildHostPlan(policy, readyPlatformEvidence())
+	plan, err := cachyos.BuildHostPlan(policy, readyPlatformEvidence(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,13 +140,46 @@ func loadPolicy(t *testing.T, host string) catalog.ResolvedHostPolicy {
 	return policy
 }
 
-func readyPlatformEvidence() cachyos.PlatformEvidence {
+func readyPlatformEvidence(t *testing.T) cachyos.PlatformEvidence {
+	t.Helper()
 	evidence := cachyos.PlatformEvidence{Capabilities: map[catalog.RiskCapability]cachyos.CapabilityEvidence{}, Bootstrap: cachyos.BootstrapObservation{
 		InstalledPackages: map[string]string{"paru": "1", "cosmic-store": "1", "flatpak": "1", "zsh": "1", "google-chrome": "1", "firefox": "1", "plymouth": "1"},
 		Boot:              cachyos.BootObservation{MkinitcpioHasPlymouth: true, GrubHasSplash: true, GrubGeneratorAvailable: true},
-	}, Desktop: cachyos.DesktopObservation{HomeRoot: "/fixture/home", UserName: "fixture"}}
+	}, Fingerprint: fingerprintFixtureEvidence(t), Desktop: cachyos.DesktopObservation{HomeRoot: "/fixture/home", UserName: "fixture"}}
 	for _, capability := range catalog.RiskCapabilities() {
 		evidence.Capabilities[capability] = cachyos.CapabilityEvidence{State: cachyos.EvidenceReady}
 	}
 	return evidence
+}
+
+func fingerprintFixtureEvidence(t *testing.T) cachyos.FingerprintObservation {
+	t.Helper()
+	const (
+		sourceCommit = "8749008832ee1f313bfca4d3c04340df84b2bc27"
+		pkgbuildSHA  = "094cdd3f61a0227c7eec5c2426a20885a35cf2bd23e39d713e903072a02797bf"
+		patchSHA     = "dd248cb9225857385f32ce36da887cb039d5ec7bffd54f412a790e898349d03d"
+		artifactSHA  = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	)
+	observation := cachyos.FingerprintObservation{
+		BuildRoot: "/fixture/build/fingerprint",
+		Pin: &cachyos.FingerprintResolvedPin{
+			SourceCommit: sourceCommit, Pkgrel: 1, PKGBUILDSHA256: pkgbuildSHA, PatchSHA256: patchSHA,
+			ArtifactName: "libfprint-egismoc-sdcp-git-r100.8749008-1-x86_64.pkg.tar.zst", ArtifactSHA256: artifactSHA, SourceDateEpoch: "1725148800",
+		},
+		Package: cachyos.FingerprintPackageObservation{Installed: true, Name: "libfprint-egismoc-sdcp-git", SourceCommit: sourceCommit, Pkgrel: 1},
+		PAM:     make(map[string]cachyos.FingerprintFileObservation),
+	}
+	for _, name := range []string{"cosmic-greeter", "greetd", "polkit-1", "su", "su-l", "sudo", "system-local-login"} {
+		path := "/etc/pam.d/" + name
+		content, err := assets.FS.ReadFile("overlays/galaxy/etc/pam.d/" + name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		digest := sha256.Sum256(content)
+		observation.PAM[path] = cachyos.FingerprintFileObservation{
+			Path: path, Exists: true, SHA256: hex.EncodeToString(digest[:]), Mode: 0o644,
+			Ownership: cachyos.OwnershipAdopted, BackupPath: path + ".bak.alex-cachyos",
+		}
+	}
+	return observation
 }

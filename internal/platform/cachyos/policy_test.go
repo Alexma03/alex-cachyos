@@ -426,8 +426,37 @@ func readyEvidence() PlatformEvidence {
 			},
 			Boot: BootObservation{MkinitcpioHasPlymouth: true, GrubHasSplash: true, GrubGeneratorAvailable: true},
 		},
-		Desktop: DesktopObservation{HomeRoot: "/fixture/home", UserName: "fixture"},
+		Fingerprint: readyFingerprintEvidence(),
+		Desktop:     DesktopObservation{HomeRoot: "/fixture/home", UserName: "fixture"},
 	}
+}
+
+func readyFingerprintEvidence() FingerprintObservation {
+	files, err := loadFingerprintPAMFiles()
+	if err != nil {
+		panic(err)
+	}
+	observation := FingerprintObservation{
+		BuildRoot: "/fixture/build/fingerprint",
+		Pin: &FingerprintResolvedPin{
+			SourceCommit:    testFingerprintCommit,
+			Pkgrel:          1,
+			PKGBUILDSHA256:  testFingerprintPKGBUILD,
+			PatchSHA256:     testFingerprintPatch,
+			ArtifactName:    "libfprint-egismoc-sdcp-git-r100.8749008-1-x86_64.pkg.tar.zst",
+			ArtifactSHA256:  testFingerprintArtifact,
+			SourceDateEpoch: "1725148800",
+		},
+		Package: FingerprintPackageObservation{Installed: true, Name: fingerprintPackageName, SourceCommit: testFingerprintCommit, Pkgrel: 1},
+		PAM:     make(map[string]FingerprintFileObservation, len(files)),
+	}
+	for _, file := range files {
+		observation.PAM[file.Path] = FingerprintFileObservation{
+			Path: file.Path, Exists: true, SHA256: fingerprintSHA(file.Content), Mode: file.Mode,
+			Ownership: OwnershipAdopted, BackupPath: file.Path + ".bak.alex-cachyos",
+		}
+	}
+	return observation
 }
 
 func riskPolicyFor(capability catalog.RiskCapability) catalog.RiskPolicy {

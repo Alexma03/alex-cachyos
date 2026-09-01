@@ -38,7 +38,7 @@
   "overlays": [
     "overlays/galaxy"
   ],
-  "planDigest": "f7fd67a18f31a6425d1dc939b99805313f751bd4f1105e62f4cb220c50af075f",
+  "planDigest": "c4c4873274bc5b85cba41d0327c90f8b50452e64dd330ab461c32947dcbf4158",
   "stepOrder": [
     "bootstrap.boot.grub-edit",
     "bootstrap.boot.grub-generate",
@@ -50,7 +50,14 @@
     "bootstrap.packages.remove",
     "bootstrap.packages.explicit",
     "bootstrap.zsh",
-    "fingerprint.pam",
+    "fingerprint.package.install",
+    "fingerprint.pam.cosmic-greeter",
+    "fingerprint.pam.greetd",
+    "fingerprint.pam.polkit-1",
+    "fingerprint.pam.su",
+    "fingerprint.pam.su-l",
+    "fingerprint.pam.sudo",
+    "fingerprint.pam.system-local-login",
     "desktop.packages.install",
     "desktop.file.hyprwhspr",
     "desktop.file.niri",
@@ -78,7 +85,7 @@
   "convergence": {
     "firstNoChange": false,
     "secondNoChange": true,
-    "mutationCount": 22,
+    "mutationCount": 29,
     "secondMutationCount": 0
   },
   "rollback": {
