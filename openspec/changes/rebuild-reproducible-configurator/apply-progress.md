@@ -480,3 +480,60 @@ git diff --check                                                                
 ```
 
 No WU-14 checkbox is advanced by this subset. The first row still requires Cosmic prune/PAM/plugins/portals completeness; the second still requires the full WU-11 inventory and explicit final-module planner proof; the hardware row still requires its complete CLI string/exit-code contract; and the acceptance row still requires the full seven-module Galaxy plus overlay-sync evidence. Live package/service/desktop validation remains pending until a real catalog host and explicit matching integration target are supplied.
+
+## WU-11 completion — injected command composition, rollback, receipts, and checkpoints (2026-09-01)
+
+Baseline: integrated `5db9f20` on isolated branch `codex/rebuild-command-completion`. This target-independent slice used ordinary repository tooling only. It introduced no production hostname, catalog, hardware value, live mutation, or Gentle AI state.
+
+Completed behavior:
+
+- Immutable receipt lookup now resolves historical evidence by validated run ID through the descriptor-open state root. The scanner validates owner/mode, rejects symlinks and corrupt/ambiguous stores, and never infers a receipt filename from caller input.
+- Typed application constructors now compose apply, check, adopt, rollback, checkpoint, receipt, and status from injected repositories/factories/ports. The default binary remains fail-closed for catalog-dependent operations until a production catalog is supplied; current/by-ID receipt reads remain production-independent.
+- Receipt rollback acquires the shared mutation lock, observes and validates every managed-file precondition before any inverse executes, performs created/adopted/package-owned typed inverses in stable order, and publishes a distinct immutable rollback receipt. Existing source receipts are never edited. System transactions are reported as `snapper-delegated`; no competing system rollback engine was added.
+- Tagged rollback reads only caller-declared files through validated Git object reads, computes a stable snapshot digest, forwards `--remove` modules to the injected reapply planner, and records the reapplied catalog tag in a new receipt. `planner.BuildRemovalPlan` maps selected steps to declared inverses in reverse application order and refuses missing/unknown authority.
+- Checkpoint composition acquires the mutation lock, validates injected catalog and managed-asset paths are present and unchanged at HEAD, and only then creates the existing annotated `catalog-vX.Y.Z` tag. The path-limited Git validation deliberately ignores unrelated dirty files and never commits, checks out, stashes, resets, or forces.
+- Human/JSON adapters now render typed adoption, rollback, and checkpoint results and map receipt lookup, rollback conflict, checkpoint validation, catalog-tag, usage, drift, and lock-contention failures to deterministic sanitized strings/exit codes.
+
+RED evidence was reproduced against an exported clean `HEAD` tree with the new focused tests only:
+
+```text
+go test ./internal/app ./internal/receipt ./internal/planner ./internal/gitx ./internal/cli ./cmd/alex-cachyos -count=1
+FAIL: NewRollbackCommand/RollbackCommandConfig/MutationLockFactory undefined
+FAIL: Store.Read/ErrReceiptNotFound/ErrReceiptAmbiguous undefined
+FAIL: BuildRemovalPlan/ErrMissingInverse undefined
+FAIL: Client.ValidateCommittedPaths/ErrCheckpointPathNotCommitted undefined
+FAIL: typed rollback/checkpoint result fields undefined
+FAIL: historical receipt runtime returned command runtime unavailable
+RED_EXIT=1
+```
+
+Focused GREEN:
+
+```text
+go test ./internal/receipt ./internal/app ./internal/planner ./internal/gitx ./internal/cli ./cmd/alex-cachyos -count=1
+ok: all six focused package groups
+exit 0
+```
+
+TRIANGULATE evidence:
+
+- `TestCheckCommandBuildsHostInventoryAndRunsOfflineChecker` seeds managed-file drift, retains the backup path, and produces non-zero exit intent.
+- `TestCommandResultPreservesAppliedCatalogIdentity` proves catalog tag, release, and digest survive the typed command boundary.
+- `TestRunMapsConcurrentMutatorContentionToExit75` proves a concurrent mutating command maps to exit 75 and the allowlisted message.
+- Actual temporary Git repositories prove tagged object reads leave dirty worktree/index/HEAD bytes unchanged and checkpoint validation accepts unrelated dirt while rejecting declared-path drift/untracked data.
+
+Canonical verification:
+
+```text
+go test ./...                                      exit 0
+bash -n apply bin/alex-cachyos-webapp-launch lib/*.sh modules/*.sh
+                                                    exit 0
+python3 profile JSON validation                    exit 0
+go run ./tools/sync-assets --check                 exit 0
+go vet ./...                                       exit 0
+git diff --check                                   exit 0
+```
+
+Tasks proven complete in this slice: WU-11.2, WU-11.3, WU-11.4, and WU-11.6. Parent ledger: **69/123 checked, 54 unchecked**. Production execution still correctly requires the later real catalog/host composition; synthetic fixtures remain tests rather than machine authority.
+
+Rollback boundary: revert the WU-11-owned product/test files and these two cumulative OpenSpec updates. No live package, file, service, Git tag, or host state was changed by verification.

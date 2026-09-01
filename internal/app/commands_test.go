@@ -149,6 +149,26 @@ func TestCommandResultCarriesCheckAndReceiptEvidence(t *testing.T) {
 	}
 }
 
+func TestCommandResultPreservesAppliedCatalogIdentity(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("..", "..", "testdata", "receipts", "golden-v1.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	stored, err := receipt.Parse(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	operations := &commandOperationsSpy{result: CommandResult{Receipt: &stored}}
+	service := NewCommandService(nil, nil, operations)
+	got, err := service.Execute(context.Background(), CommandRequest{Command: CommandReceipt})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Receipt == nil || got.Receipt.Catalog.Tag != "catalog-v1.0.0" || got.Receipt.Catalog.Release != "catalog-v1.0.0" || got.Receipt.Catalog.Digest != "sha256:catalog" {
+		t.Fatalf("catalog identity = %#v", got.Receipt)
+	}
+}
+
 func TestCommandServiceRejectsInvalidReceiptResultsInsteadOfAliasingThem(t *testing.T) {
 	invalid := receipt.Receipt{RunID: "not-a-valid-receipt"}
 	operations := &commandOperationsSpy{result: CommandResult{Receipt: &invalid}}

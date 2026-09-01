@@ -130,3 +130,78 @@ func TestCurrentIndexRenameIsAtomic(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestReadFindsImmutableReceiptByRunIDAfterCurrentAdvances(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "alex-cachyos")
+	store := NewStore(root)
+	want := validStoreReceipt(t, "run-old")
+	want.FinishedAt = "2026-01-02T03:04:06Z"
+	wantPath, err := store.Publish(want)
+	if err != nil {
+		t.Fatal(err)
+	}
+	newer := validStoreReceipt(t, "run-new")
+	newer.FinishedAt = "2026-01-02T04:04:06Z"
+	if _, err := store.Publish(newer); err != nil {
+		t.Fatal(err)
+	}
+
+	got, gotPath, err := store.Read("run-old")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.RunID != want.RunID || gotPath != wantPath {
+		t.Fatalf("Read = %q %q, want %q %q", got.RunID, gotPath, want.RunID, wantPath)
+	}
+	current, _, err := store.Current()
+	if err != nil || current.RunID != "run-new" {
+		t.Fatalf("Current = %q, %v", current.RunID, err)
+	}
+}
+
+func TestReadFailsClosedForInvalidMissingAmbiguousAndUnsafeReceipts(t *testing.T) {
+	t.Run("invalid ID", func(t *testing.T) {
+		if _, _, err := NewStore(filepath.Join(t.TempDir(), "state")).Read("../escape"); !errors.Is(err, ErrInvalid) {
+			t.Fatalf("error = %v", err)
+		}
+	})
+	t.Run("missing", func(t *testing.T) {
+		root := filepath.Join(t.TempDir(), "state")
+		store := NewStore(root)
+		if _, err := store.Publish(validStoreReceipt(t, "other")); err != nil {
+			t.Fatal(err)
+		}
+		if _, _, err := store.Read("missing"); !errors.Is(err, ErrReceiptNotFound) {
+			t.Fatalf("error = %v", err)
+		}
+	})
+	t.Run("ambiguous", func(t *testing.T) {
+		root := filepath.Join(t.TempDir(), "state")
+		store := NewStore(root)
+		first := validStoreReceipt(t, "duplicate")
+		if _, err := store.Publish(first); err != nil {
+			t.Fatal(err)
+		}
+		second := first
+		second.FinishedAt = "2026-01-02T05:04:06Z"
+		if _, err := store.Publish(second); err != nil {
+			t.Fatal(err)
+		}
+		if _, _, err := store.Read("duplicate"); !errors.Is(err, ErrReceiptAmbiguous) {
+			t.Fatalf("error = %v", err)
+		}
+	})
+	t.Run("symlink", func(t *testing.T) {
+		root := filepath.Join(t.TempDir(), "state")
+		store := NewStore(root)
+		if _, err := store.Publish(validStoreReceipt(t, "safe")); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink("outside", filepath.Join(root, receiptsDirName, "unsafe.json")); err != nil {
+			t.Fatal(err)
+		}
+		if _, _, err := store.Read("safe"); !errors.Is(err, ErrInvalid) {
+			t.Fatalf("unsafe entry error = %v", err)
+		}
+	})
+}

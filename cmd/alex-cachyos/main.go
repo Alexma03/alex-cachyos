@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"alex-cachyos/internal/app"
+	"alex-cachyos/internal/catalog"
 	"alex-cachyos/internal/cli"
 	"alex-cachyos/internal/planner"
 	"alex-cachyos/internal/platform/cachyos"
@@ -63,21 +64,14 @@ type localCommandRuntime struct{}
 
 func defaultCommandRuntime() commandRuntime { return localCommandRuntime{} }
 
-func (localCommandRuntime) Execute(_ context.Context, request app.CommandRequest) (app.CommandResult, error) {
+func (localCommandRuntime) Execute(ctx context.Context, request app.CommandRequest) (app.CommandResult, error) {
 	switch request.Command {
 	case app.CommandReceipt, app.CommandStatus:
-		if request.ReceiptID != "" {
-			return app.CommandResult{}, app.ErrCommandUnavailable
-		}
 		paths, err := statepath.Resolve()
 		if err != nil {
 			return app.CommandResult{}, app.ErrCommandUnavailable
 		}
-		value, path, err := receipt.NewStoreFromPaths(paths).Current()
-		if err != nil {
-			return app.CommandResult{}, err
-		}
-		return app.CommandResult{Command: request.Command, Host: value.Host.Resolved, Receipt: &value, ReceiptPath: path}, nil
+		return app.NewReceiptCommand(receipt.NewStoreFromPaths(paths)).Execute(ctx, request, catalog.ResolvedHostPolicy{})
 	default:
 		return app.CommandResult{}, app.ErrCommandUnavailable
 	}

@@ -107,6 +107,15 @@ func TestRunSanitizesRuntimeErrorsInHumanAndJSONModes(t *testing.T) {
 	}
 }
 
+func TestRunMapsConcurrentMutatorContentionToExit75(t *testing.T) {
+	runtime := &commandRuntimeSpy{err: app.ErrLockContention}
+	var stdout, stderr bytes.Buffer
+	code := runWithRuntime([]string{"apply", "--host", "portable"}, bytes.NewReader(nil), &stdout, &stderr, selfHelperRuntime{}, runtime)
+	if code != 75 || stdout.Len() != 0 || stderr.String() != "another mutating command is already running\n" {
+		t.Fatalf("contention = code %d stdout %q stderr %q", code, stdout.String(), stderr.String())
+	}
+}
+
 func TestRunRendersUsageErrorsInTheRequestedFormat(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := runWithRuntime([]string{"rollback", "--json"}, bytes.NewReader(nil), &stdout, &stderr, selfHelperRuntime{}, &commandRuntimeSpy{})
@@ -158,6 +167,47 @@ func TestDefaultStatusAndReceiptReadTheAtomicCurrentReceipt(t *testing.T) {
 		if code := run(args, bytes.NewReader(nil), &stdout, &stderr, selfHelperRuntime{}); code != 0 || stderr.Len() != 0 || !strings.Contains(stdout.String(), `"runId":"run-current"`) {
 			t.Fatalf("run(%q) = code %d stdout %q stderr %q", args, code, stdout.String(), stderr.String())
 		}
+	}
+}
+
+func TestDefaultReceiptRuntimeCanResolveImmutableReceiptByID(t *testing.T) {
+	root := t.TempDir()
+	runtimeDir := filepath.Join(root, "runtime")
+	if err := os.Mkdir(runtimeDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("HOME", filepath.Join(root, "home"))
+	t.Setenv("XDG_STATE_HOME", filepath.Join(root, "state"))
+	t.Setenv("XDG_DATA_HOME", filepath.Join(root, "data"))
+	t.Setenv("XDG_CACHE_HOME", filepath.Join(root, "cache"))
+	t.Setenv("XDG_RUNTIME_DIR", runtimeDir)
+	paths, err := statepath.Resolve()
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join("..", "..", "testdata", "receipts", "golden-v1.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	old, err := receipt.Parse(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	old.RunID = "run-old"
+	old.FinishedAt = "2026-01-02T03:04:06Z"
+	store := receipt.NewStoreFromPaths(paths)
+	if _, err := store.Publish(old); err != nil {
+		t.Fatal(err)
+	}
+	newer := old
+	newer.RunID = "run-current"
+	newer.FinishedAt = "2026-01-02T04:04:06Z"
+	if _, err := store.Publish(newer); err != nil {
+		t.Fatal(err)
+	}
+	got, err := defaultCommandRuntime().Execute(context.Background(), app.CommandRequest{Command: app.CommandReceipt, ReceiptID: "run-old"})
+	if err != nil || got.Receipt == nil || got.Receipt.RunID != "run-old" {
+		t.Fatalf("receipt by ID = %#v, %v", got, err)
 	}
 }
 

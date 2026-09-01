@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
@@ -27,7 +28,13 @@ const (
 	maxReceiptRead  = int64(16 << 20)
 )
 
-var ErrReceiptExists = errors.New("receipt already exists")
+var (
+	ErrReceiptExists    = errors.New("receipt already exists")
+	ErrReceiptNotFound  = errors.New("receipt not found")
+	ErrReceiptAmbiguous = errors.New("receipt ID is ambiguous")
+)
+
+var storedRunIDPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_.:+@~-]{0,255}$`)
 
 type fileOps struct {
 	mkdirAll   func(string, os.FileMode) error
@@ -201,6 +208,68 @@ func (s *Store) Current() (Receipt, string, error) {
 		return Receipt{}, "", fmt.Errorf("%w: current receipt run ID mismatch", ErrInvalid)
 	}
 	return receipt, receiptPath, nil
+}
+
+// Read resolves an immutable receipt by its recorded run ID. Receipt file
+// names are content-addressed rather than run-ID-addressed, so lookup scans the
+// descriptor-open receipts directory and validates every candidate before it
+// compares the ID. Duplicate IDs fail closed instead of selecting by filename.
+func (s *Store) Read(runID string) (Receipt, string, error) {
+	if s == nil {
+		return Receipt{}, "", errors.New("nil receipt store")
+	}
+	if !storedRunIDPattern.MatchString(runID) {
+		return Receipt{}, "", fmt.Errorf("%w: invalid receipt ID", ErrInvalid)
+	}
+	root, err := safefile.OpenRoot(s.root)
+	if err != nil {
+		return Receipt{}, "", currentReadError("open receipt state root", err)
+	}
+	defer root.Close()
+	if metadata, err := root.Stat(); err != nil || !ownedMode(metadata, 0700) {
+		return Receipt{}, "", fmt.Errorf("%w: unsafe receipt state directory", ErrInvalid)
+	}
+	receipts, err := root.OpenDir(receiptsDirName)
+	if err != nil {
+		return Receipt{}, "", currentReadError("open receipts directory", err)
+	}
+	defer receipts.Close()
+	if metadata, err := receipts.Stat(); err != nil || !ownedMode(metadata, 0700) {
+		return Receipt{}, "", fmt.Errorf("%w: unsafe receipts directory", ErrInvalid)
+	}
+	names, err := receipts.ReadDirNames()
+	if err != nil {
+		return Receipt{}, "", currentReadError("list receipts", err)
+	}
+	var found Receipt
+	var foundPath string
+	for _, name := range names {
+		if filepath.Ext(name) != ".json" || name == currentName {
+			continue
+		}
+		result, err := receipts.ReadRegularFileWithMetadata(name, maxReceiptRead)
+		if err != nil {
+			return Receipt{}, "", currentReadError("read stored receipt", err)
+		}
+		if !ownedMode(result.Metadata, 0600) {
+			return Receipt{}, "", fmt.Errorf("%w: unsafe receipt metadata", ErrInvalid)
+		}
+		value, err := Parse(result.Data)
+		if err != nil {
+			return Receipt{}, "", fmt.Errorf("parse stored receipt: %w", err)
+		}
+		if value.RunID != runID {
+			continue
+		}
+		if foundPath != "" {
+			return Receipt{}, "", ErrReceiptAmbiguous
+		}
+		found, foundPath = value, filepath.Join(s.root, receiptsDirName, name)
+	}
+	if foundPath == "" {
+		return Receipt{}, "", ErrReceiptNotFound
+	}
+	return found, foundPath, nil
 }
 
 func ownedMode(metadata safefile.Metadata, mode os.FileMode) bool {

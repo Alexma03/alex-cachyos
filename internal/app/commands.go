@@ -43,12 +43,15 @@ type CommandRequest struct {
 
 // CommandResult is the privacy-safe result shared by human and JSON adapters.
 type CommandResult struct {
-	Command     CommandName      `json:"command"`
-	Host        string           `json:"host,omitempty"`
-	Message     string           `json:"message,omitempty"`
-	Check       *CheckReport     `json:"check,omitempty"`
-	Receipt     *receipt.Receipt `json:"receipt,omitempty"`
-	ReceiptPath string           `json:"receiptPath,omitempty"`
+	Command     CommandName       `json:"command"`
+	Host        string            `json:"host,omitempty"`
+	Message     string            `json:"message,omitempty"`
+	Check       *CheckReport      `json:"check,omitempty"`
+	Receipt     *receipt.Receipt  `json:"receipt,omitempty"`
+	ReceiptPath string            `json:"receiptPath,omitempty"`
+	Rollback    *RollbackResult   `json:"rollback,omitempty"`
+	Checkpoint  *CheckpointResult `json:"checkpoint,omitempty"`
+	Adoption    *AdoptionResult   `json:"adoption,omitempty"`
 }
 
 func (r CommandResult) ExitCode() int {
@@ -242,6 +245,18 @@ func cloneCommandResult(value CommandResult) (CommandResult, error) {
 			return CommandResult{}, err
 		}
 		result.Receipt = &copy
+	}
+	if value.Rollback != nil {
+		copy := *value.Rollback
+		result.Rollback = &copy
+	}
+	if value.Checkpoint != nil {
+		copy := *value.Checkpoint
+		result.Checkpoint = &copy
+	}
+	if value.Adoption != nil {
+		copy := *value.Adoption
+		result.Adoption = &copy
 	}
 	return result, nil
 }

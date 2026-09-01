@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -129,6 +130,33 @@ func (r *Root) Stat() (Metadata, error) {
 	}
 	snapshot, err := snapshotMetadata(r.file)
 	return snapshot.Metadata, err
+}
+
+// ReadDirNames returns a stable snapshot of the names in the already-open
+// directory descriptor. Callers must still open and validate every selected
+// entry through this Root; names alone never grant file authority.
+func (r *Root) ReadDirNames() ([]string, error) {
+	if r == nil {
+		return nil, errors.New("nil trusted root")
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.file == nil {
+		return nil, os.ErrClosed
+	}
+	if _, err := r.file.Seek(0, io.SeekStart); err != nil {
+		return nil, fmt.Errorf("rewind %q: %w", r.path, err)
+	}
+	entries, err := r.file.ReadDir(-1)
+	if err != nil {
+		return nil, fmt.Errorf("read directory %q: %w", r.path, err)
+	}
+	names := make([]string, len(entries))
+	for i, entry := range entries {
+		names[i] = entry.Name()
+	}
+	sort.Strings(names)
+	return names, nil
 }
 
 func (r *Root) Close() error {

@@ -7,6 +7,8 @@ import (
 	"io"
 
 	"alex-cachyos/internal/app"
+	"alex-cachyos/internal/gitx"
+	"alex-cachyos/internal/receipt"
 )
 
 // RenderCommandResult owns both public output formats. Application code
@@ -50,7 +52,31 @@ func RenderCommandResult(machine bool, result app.CommandResult, output io.Write
 		return nil
 	}
 	if result.Receipt != nil {
+		if result.Rollback != nil {
+			_, err := fmt.Fprintf(output, "rollback %s", result.Rollback.ReceiptID)
+			if err != nil {
+				return err
+			}
+			if result.Rollback.RollbackOf != "" {
+				_, err = fmt.Fprintf(output, " rollback-of=%s", result.Rollback.RollbackOf)
+			} else if result.Rollback.CatalogTag != "" {
+				_, err = fmt.Fprintf(output, " catalog=%s", result.Rollback.CatalogTag)
+			}
+			if err != nil {
+				return err
+			}
+			_, err = fmt.Fprintf(output, " inverses=%d system=%s\n", result.Rollback.InverseCount, result.Rollback.SystemRollback)
+			return err
+		}
 		_, err := fmt.Fprintf(output, "%s %s\n", result.Receipt.RunID, result.ReceiptPath)
+		return err
+	}
+	if result.Checkpoint != nil {
+		_, err := fmt.Fprintf(output, "checkpoint %s %s\n", result.Checkpoint.Tag, result.Checkpoint.Commit)
+		return err
+	}
+	if result.Adoption != nil {
+		_, err := fmt.Fprintf(output, "adopted %s backup=%s receipt=%s\n", result.Adoption.Target, result.Adoption.Backup, result.Adoption.FirstReceiptID)
 		return err
 	}
 	_, err := fmt.Fprintln(output, result.Command)
@@ -91,6 +117,18 @@ func safeCommandError(err error) (string, string, int) {
 		return "lock-contention", "another mutating command is already running", ExitLockContention
 	case errors.Is(err, app.ErrCommandUnavailable):
 		return "runtime-unavailable", "command runtime unavailable", ExitUsage
+	case errors.Is(err, app.ErrInvalidRollbackTarget):
+		return "invalid-rollback-target", "rollback requires exactly one receipt ID or catalog tag", ExitUsage
+	case errors.Is(err, receipt.ErrReceiptNotFound):
+		return "receipt-not-found", "receipt not found", 1
+	case errors.Is(err, receipt.ErrReceiptAmbiguous):
+		return "receipt-ambiguous", "receipt ID is ambiguous", 1
+	case errors.Is(err, app.ErrRollbackConflict):
+		return "rollback-conflict", "rollback precondition conflict", 1
+	case errors.Is(err, app.ErrCheckpointValidation):
+		return "checkpoint-invalid", "catalog or managed assets are not committed at HEAD", 1
+	case errors.Is(err, gitx.ErrInvalidCatalogTag):
+		return "invalid-catalog-tag", "catalog tag must match catalog-vX.Y.Z", ExitUsage
 	default:
 		return "command-failed", "command failed", 1
 	}
