@@ -1,0 +1,20 @@
+catalogVersion: 1
+kind: Global
+pins:
+  npm:
+    pi-commandcode-provider: 0.0.0-fixture.1
+    pi-subagents-j0k3r: 0.0.0-fixture.2
+    "@juicesharp/rpiv-ask-user-question": 0.0.0-fixture.3
+    pi-web-access: 0.0.0-fixture.4
+    "@juicesharp/rpiv-todo": 0.0.0-fixture.5
+    pi-btw: 0.0.0-fixture.6
+    pi-mcp-adapter: 0.0.0-fixture.7
+    gentle-engram: 0.0.0-fixture.8
+    pi-antigravity: 0.0.0-fixture.9
+  localPathPackages:
+    gentle-pi: ../../Projects/gentle-pi
+checkoutPins:
+  gentle-pi:
+    remote: https://example.invalid/gentle-pi.git
+    branch: main
+    commit: "1111111111111111111111111111111111111111"
