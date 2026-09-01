@@ -1,15 +1,21 @@
 package receipt
 
 import (
+	"bytes"
 	"crypto/sha256"
+	"crypto/subtle"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
+	"syscall"
 	"time"
 
+	"alex-cachyos/internal/safefile"
 	"alex-cachyos/internal/statepath"
 )
 
@@ -18,6 +24,7 @@ const (
 	receiptsDirName = "receipts"
 	currentName     = "current.json"
 	currentSchema   = "alex-cachyos.receipt-index/v1"
+	maxReceiptRead  = int64(16 << 20)
 )
 
 var ErrReceiptExists = errors.New("receipt already exists")
@@ -26,6 +33,7 @@ type fileOps struct {
 	mkdirAll   func(string, os.FileMode) error
 	chmod      func(string, os.FileMode) error
 	createTemp func(string, string) (*os.File, error)
+	lstat      func(string) (os.FileInfo, error)
 	open       func(string) (*os.File, error)
 	sync       func(*os.File) error
 	close      func(*os.File) error
@@ -51,6 +59,7 @@ func defaultFileOps() fileOps {
 		mkdirAll:   os.MkdirAll,
 		chmod:      os.Chmod,
 		createTemp: os.CreateTemp,
+		lstat:      os.Lstat,
 		open:       os.Open,
 		sync:       func(f *os.File) error { return f.Sync() },
 		close:      func(f *os.File) error { return f.Close() },
@@ -70,6 +79,9 @@ func newStoreWithOps(root string, overrides fileOps) *Store {
 	}
 	if overrides.createTemp != nil {
 		ops.createTemp = overrides.createTemp
+	}
+	if overrides.lstat != nil {
+		ops.lstat = overrides.lstat
 	}
 	if overrides.open != nil {
 		ops.open = overrides.open
@@ -131,14 +143,150 @@ func (s *Store) Publish(r Receipt) (string, error) {
 
 func (s *Store) Write(r Receipt) error { _, err := s.Publish(r); return err }
 
+// Current reads the atomically selected immutable receipt without reopening an
+// inspected pathname. Both state directories and both files must retain their
+// configurator-owned modes and current-user ownership.
+func (s *Store) Current() (Receipt, string, error) {
+	if s == nil {
+		return Receipt{}, "", errors.New("nil receipt store")
+	}
+	root, err := safefile.OpenRoot(s.root)
+	if err != nil {
+		return Receipt{}, "", currentReadError("open receipt state root", err)
+	}
+	defer root.Close()
+	if metadata, err := root.Stat(); err != nil || !ownedMode(metadata, 0700) {
+		return Receipt{}, "", fmt.Errorf("%w: unsafe receipt state directory", ErrInvalid)
+	}
+
+	indexResult, err := root.ReadRegularFileWithMetadata(currentName, maxReceiptRead)
+	if err != nil {
+		return Receipt{}, "", currentReadError("read current receipt index", err)
+	}
+	if !ownedMode(indexResult.Metadata, 0600) {
+		return Receipt{}, "", fmt.Errorf("%w: unsafe current receipt index metadata", ErrInvalid)
+	}
+	index, err := decodeCurrentIndex(indexResult.Data)
+	if err != nil {
+		return Receipt{}, "", err
+	}
+	name, receiptPath, err := s.currentReceiptPath(index.ReceiptPath)
+	if err != nil {
+		return Receipt{}, "", err
+	}
+
+	receipts, err := root.OpenDir(receiptsDirName)
+	if err != nil {
+		return Receipt{}, "", currentReadError("open receipts directory", err)
+	}
+	defer receipts.Close()
+	if metadata, err := receipts.Stat(); err != nil || !ownedMode(metadata, 0700) {
+		return Receipt{}, "", fmt.Errorf("%w: unsafe receipts directory", ErrInvalid)
+	}
+	receiptResult, err := receipts.ReadRegularFileWithMetadata(name, maxReceiptRead)
+	if err != nil {
+		return Receipt{}, "", currentReadError("read current receipt", err)
+	}
+	if !ownedMode(receiptResult.Metadata, 0600) {
+		return Receipt{}, "", fmt.Errorf("%w: unsafe receipt metadata", ErrInvalid)
+	}
+	if !matchesSHA256(index.ReceiptSHA256, receiptResult.Data) {
+		return Receipt{}, "", fmt.Errorf("%w: current receipt digest mismatch", ErrInvalid)
+	}
+	receipt, err := Parse(receiptResult.Data)
+	if err != nil {
+		return Receipt{}, "", fmt.Errorf("parse current receipt: %w", err)
+	}
+	if receipt.RunID != index.RunID {
+		return Receipt{}, "", fmt.Errorf("%w: current receipt run ID mismatch", ErrInvalid)
+	}
+	return receipt, receiptPath, nil
+}
+
+func ownedMode(metadata safefile.Metadata, mode os.FileMode) bool {
+	return metadata.Mode.Perm() == mode && metadata.UID == uint32(os.Getuid())
+}
+
+func fileOwner(info os.FileInfo) (uint32, uint32, bool) {
+	stat, ok := info.Sys().(*syscall.Stat_t)
+	if !ok {
+		return 0, 0, false
+	}
+	return stat.Uid, stat.Gid, true
+}
+
+func currentReadError(operation string, err error) error {
+	for _, class := range []error{safefile.ErrUnsafeRoot, safefile.ErrInvalidPath, safefile.ErrUnsafePath, safefile.ErrNotRegular, safefile.ErrNotDirectory, safefile.ErrTooLarge, safefile.ErrChanged} {
+		if errors.Is(err, class) {
+			return fmt.Errorf("%w: %s: %v", ErrInvalid, operation, err)
+		}
+	}
+	return fmt.Errorf("%s: %w", operation, err)
+}
+
+func decodeCurrentIndex(data []byte) (currentIndex, error) {
+	var index currentIndex
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&index); err != nil {
+		return currentIndex{}, fmt.Errorf("%w: decode current receipt index", ErrInvalid)
+	}
+	var extra any
+	if err := decoder.Decode(&extra); err != io.EOF {
+		return currentIndex{}, fmt.Errorf("%w: trailing current receipt index data", ErrInvalid)
+	}
+	if index.Schema != currentSchema || index.RunID == "" || index.ReceiptPath == "" || index.ReceiptSHA256 == "" {
+		return currentIndex{}, fmt.Errorf("%w: incomplete current receipt index", ErrInvalid)
+	}
+	return index, nil
+}
+
+func (s *Store) currentReceiptPath(relative string) (string, string, error) {
+	if relative == "" || filepath.IsAbs(relative) || filepath.VolumeName(relative) != "" || filepath.Clean(relative) != relative {
+		return "", "", fmt.Errorf("%w: current receipt path must be strict and relative", ErrInvalid)
+	}
+	parts := strings.Split(relative, string(filepath.Separator))
+	if len(parts) != 2 || parts[0] != receiptsDirName || parts[1] == "" || parts[1] == "." || parts[1] == ".." {
+		return "", "", fmt.Errorf("%w: current receipt path must name one receipt", ErrInvalid)
+	}
+	return parts[1], filepath.Join(s.root, receiptsDirName, parts[1]), nil
+}
+
+func matchesSHA256(expected string, data []byte) bool {
+	encoded, err := hex.DecodeString(expected)
+	if err != nil || len(encoded) != sha256.Size {
+		return false
+	}
+	digest := sha256.Sum256(data)
+	return subtle.ConstantTimeCompare(encoded, digest[:]) == 1
+}
+
 func (s *Store) ensureDir(path string) error {
 	if err := s.ops.mkdirAll(path, 0700); err != nil {
 		return fmt.Errorf("create receipt directory: %w", err)
 	}
-	if err := s.ops.chmod(path, 0700); err != nil {
+	info, err := s.ops.lstat(path)
+	if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
+		return fmt.Errorf("unsafe receipt directory")
+	}
+	uid, _, ok := fileOwner(info)
+	if !ok || uid != uint32(os.Getuid()) {
+		return fmt.Errorf("unsafe receipt directory owner")
+	}
+	dir, err := s.ops.open(path)
+	if err != nil {
+		return fmt.Errorf("open receipt directory: %w", err)
+	}
+	openedInfo, statErr := dir.Stat()
+	if statErr != nil || !os.SameFile(info, openedInfo) {
+		_ = s.ops.close(dir)
+		return fmt.Errorf("receipt directory changed while opening")
+	}
+	if err := dir.Chmod(0700); err != nil {
+		_ = s.ops.close(dir)
 		return fmt.Errorf("secure receipt directory: %w", err)
 	}
-	return nil
+	return s.ops.close(dir)
 }
 
 func (s *Store) publishReceipt(dir, path string, data []byte) error {
@@ -174,9 +322,9 @@ func (s *Store) updateCurrent(receiptPath, runID string, digest [32]byte) error 
 		return fmt.Errorf("encode current receipt index: %w", err)
 	}
 	currentPath := filepath.Join(s.root, currentName)
-	previous, readErr := os.ReadFile(currentPath)
+	previous, readErr := s.readCurrentBytes()
 	hasPrevious := readErr == nil
-	if readErr != nil && !os.IsNotExist(readErr) {
+	if readErr != nil && !errors.Is(readErr, os.ErrNotExist) {
 		return fmt.Errorf("read current receipt index: %w", readErr)
 	}
 	temp, err := s.stage(s.root, ".current-", data)
@@ -192,6 +340,22 @@ func (s *Store) updateCurrent(receiptPath, runID string, digest [32]byte) error 
 		return fmt.Errorf("sync receipt index directory: %w", err)
 	}
 	return nil
+}
+
+func (s *Store) readCurrentBytes() ([]byte, error) {
+	root, err := safefile.OpenRoot(s.root)
+	if err != nil {
+		return nil, err
+	}
+	defer root.Close()
+	result, err := root.ReadRegularFileWithMetadata(currentName, maxReceiptRead)
+	if err != nil {
+		return nil, err
+	}
+	if !ownedMode(result.Metadata, 0600) {
+		return nil, fmt.Errorf("%w: unsafe current receipt index metadata", ErrInvalid)
+	}
+	return result.Data, nil
 }
 
 func (s *Store) rollbackCurrent(currentPath string, previous []byte, hasPrevious bool) {
@@ -234,7 +398,7 @@ func (s *Store) stage(dir, pattern string, data []byte) (string, error) {
 			cleanup()
 		}
 	}()
-	if err := s.ops.chmod(temp, 0600); err != nil {
+	if err := file.Chmod(0600); err != nil {
 		cleanup()
 		return "", fmt.Errorf("secure receipt temporary file: %w", err)
 	}

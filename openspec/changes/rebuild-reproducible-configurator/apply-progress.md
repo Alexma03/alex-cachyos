@@ -68,3 +68,21 @@ Older interrupted or superseded drafts were also archived as local WIP commits o
 - No stash, clean, hard reset, push, PR, release, or destructive main-worktree operation was performed.
 - All obsolete rebuild worktrees were removed only after becoming clean; local branches and WIP commits preserve recoverable history.
 - The sole remaining rebuild worktree is the clean integration worktree.
+
+## Post-closure continuation — WU-8 security completion
+
+WU-8 tasks 8.3 and 8.6 are complete in the isolated `codex/rebuild-wu8-security` worktree. No commit, staging, cherry-pick, push, PR, or main-worktree mutation was performed.
+
+### RED → GREEN → TRIANGULATE → REFACTOR evidence
+
+- **RED:** `go test ./internal/safefile ./internal/adopt ./internal/receipt -count=1` failed to compile because the descriptor-relative reader, adoption ownership/lookup fields, web-search boundary, and receipt `Current` API did not exist.
+- **GREEN:** focused tests passed after adding Linux `openat2`-based bounded reads, descriptor-bound receipt/adoption reads, UID/GID + exact-mode validation, target identity checks, and metadata-only unmanaged web-search handling.
+- **TRIANGULATE:** deterministic regular-file and symlink swaps between adoption inspection and backup open are rejected; current index/receipt path, mode, symlink, size, digest, and run-ID cases fail closed; corrupt records and changed/symlink backups fail closed; unmanaged `web-search.json` proves zero reads and zero backups while configurator-created content is compared only by SHA-256.
+- **REFACTOR:** shared `internal/safefile` owns strict relative path validation, trusted directory descriptors, bounded reads, and before/after metadata identity checks. Backup mode/owner changes use the open descriptor rather than reopening the backup pathname.
+
+### Work-unit verification and rollback
+
+- Focused: `go test ./internal/safefile ./internal/adopt ./internal/receipt -count=1 && go vet ./internal/safefile ./internal/adopt ./internal/receipt` — exit 0.
+- Full: `go test ./... && go vet ./... && bash -n apply bin/alex-cachyos-webapp-launch lib/*.sh modules/*.sh && python3 -c 'import json; from pathlib import Path; [json.load(p.open()) for p in Path("profiles").glob("*.json")]' && go run ./tools/sync-assets --check` — exit 0.
+- Unit-owned paths: `go.mod`, `go.sum`, `internal/safefile/**`, `internal/adopt/adopt.go`, `internal/adopt/security_test.go`, `internal/adopt/web_search.go`, `internal/receipt/store.go`, `internal/receipt/store_security_test.go`, `openspec/changes/rebuild-reproducible-configurator/tasks.md`, and this file.
+- Rollback is path-bounded to the unit-owned inventory. All tests use temporary directories; no host file, real Pi state, dependency checkout, index, or main worktree is modified.
