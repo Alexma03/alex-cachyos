@@ -22,12 +22,18 @@
     "templates/roles/workstation/hyprwhspr/config.json"
   ],
   "overlays": null,
-  "planDigest": "248c7fcec1f33d6252c3892301ba01528c3ead74cf2cd857495c3f47c4f46e8e",
+  "planDigest": "a3d849bedba1b84fc84951e089e26c2c13992ba7c564d90f8fdbbd0f29f4b374",
   "stepOrder": [
     "bootstrap.kernel.lts",
     "bootstrap.packages.explicit",
     "bootstrap.zsh",
-    "desktop.workstation"
+    "desktop.packages.install",
+    "desktop.file.hyprwhspr",
+    "desktop.file.niri",
+    "desktop.file.noctalia",
+    "desktop.polkit.model",
+    "desktop.polkit.shell",
+    "desktop.session.dmrc"
   ],
   "offlineCheck": {
     "drift": false,
@@ -44,7 +50,7 @@
   "convergence": {
     "firstNoChange": false,
     "secondNoChange": true,
-    "mutationCount": 4,
+    "mutationCount": 10,
     "secondMutationCount": 0
   },
   "rollback": {

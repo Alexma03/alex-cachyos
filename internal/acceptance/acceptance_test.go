@@ -142,7 +142,7 @@ func readyPlatformEvidence() cachyos.PlatformEvidence {
 	evidence := cachyos.PlatformEvidence{Capabilities: map[catalog.RiskCapability]cachyos.CapabilityEvidence{}, Bootstrap: cachyos.BootstrapObservation{
 		InstalledPackages: map[string]string{"paru": "1", "cosmic-store": "1", "flatpak": "1", "zsh": "1", "google-chrome": "1", "firefox": "1", "plymouth": "1"},
 		Boot:              cachyos.BootObservation{MkinitcpioHasPlymouth: true, GrubHasSplash: true, GrubGeneratorAvailable: true},
-	}}
+	}, Desktop: cachyos.DesktopObservation{HomeRoot: "/fixture/home", UserName: "fixture"}}
 	for _, capability := range catalog.RiskCapabilities() {
 		evidence.Capabilities[capability] = cachyos.CapabilityEvidence{State: cachyos.EvidenceReady}
 	}

@@ -231,7 +231,7 @@ func TestPortableFakePlanExcludesRiskyStepsAndGalaxyAssetsDespiteObservations(t 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !hasPlanStep(plan, desktopWorkstationStep) {
+	if !hasPlanStep(plan, DesktopPackagesOperation) || !hasPlanStep(plan, DesktopSessionOperation) {
 		t.Fatalf("portable plan lacks workstation base: %#v", plan.Steps)
 	}
 	for _, forbiddenID := range []string{
@@ -287,7 +287,7 @@ func TestGalaxyPolicyPreservesRiskyBootstrapAndOwnedAssets(t *testing.T) {
 		}
 	}
 	desktop := moduleNamed(t, modules, "desktop")
-	for _, id := range []string{desktopWorkstationStep, desktopFixedDisplaysStep, desktopFixedInputDevicesStep, desktopLiteralHomePathsStep, desktopCosmicPruneStep} {
+	for _, id := range []string{DesktopPackagesOperation, DesktopSessionOperation, desktopFixedDisplaysStep, desktopFixedInputDevicesStep, desktopLiteralHomePathsStep, desktopCosmicPruneStep} {
 		if !hasStep(desktop, id) {
 			t.Fatalf("Galaxy desktop lost %q: %v", id, stepIDs(desktop.Steps))
 		}
@@ -426,6 +426,7 @@ func readyEvidence() PlatformEvidence {
 			},
 			Boot: BootObservation{MkinitcpioHasPlymouth: true, GrubHasSplash: true, GrubGeneratorAvailable: true},
 		},
+		Desktop: DesktopObservation{HomeRoot: "/fixture/home", UserName: "fixture"},
 	}
 }
 

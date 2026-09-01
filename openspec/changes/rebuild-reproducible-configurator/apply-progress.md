@@ -454,3 +454,29 @@ Unit-owned paths:
 Bounded partial-unit diff before staging: 10 files, 1,162 insertions, 12
 deletions. `.atl` has no status entries; the worktree-local `.codegraph/` index
 is excluded by the user's global Git ignore and is not part of the unit.
+
+## WU-14.1–14.3 — Typed desktop and exact-target verification subset (2026-09-01)
+
+Status: **maximal hardware-independent subset implemented and verified in the isolated `wu14-desktop-verify` worktree; no live host was selected or mutated**.
+
+### RED → GREEN → TRIANGULATE → REFACTOR evidence
+
+- **RED:** `go test ./internal/platform/cachyos -run 'Test(Desktop|OSDesktop)' -count=1` failed to compile because `BuildDesktopRequestPlan`, `NewDesktopRuntime`, `NewOSDesktopFilePort`, and the desktop live-verifier APIs did not exist.
+- **GREEN:** the desktop factory reads the embedded authoritative package inventory and emits distinct typed package, role-file, Quickshell-polkit, `.dmrc`, niri-validation, Noctalia-validation, and package-validation operations. Production-capable Pacman observation, executor mutation dispatch, descriptor-relative file observation, one-time adoption backup, and same-directory atomic publication are covered without wrapping the legacy shell module.
+- **TRIANGULATE:** in-memory ports prove dry-run performs zero package/file mutations, first apply converges the typed plan, and the second apply performs zero mutations. Symlink targets fail closed. Unknown or mismatched integration targets invoke zero live verifier commands; an exact catalog-known match is the only route to allowlisted receipt-backed evidence. Galaxy and portable fixture goldens now expose the expanded desktop operation order without portable host-specific leakage.
+- **REFACTOR:** role-owned workstation assets remain under `templates/roles/workstation`; host-owned fixed display/input/literal-home assets remain behind their independent capability gates. No production hostname, hardware identifier, display, input device, or home path was invented.
+
+### Verification
+
+```text
+go test ./internal/platform/cachyos -run 'Test(Desktop|OSDesktop|RunnerDesktop)' -count=1   exit 0
+go test ./internal/acceptance -count=1                                                     exit 0
+go test ./...                                                                                exit 0
+go vet ./...                                                                                 exit 0
+go run ./tools/sync-assets --check                                                           exit 0
+bash -n apply bin/alex-cachyos-webapp-launch lib/*.sh modules/*.sh                           exit 0
+python3 profile JSON validation                                                             exit 0
+git diff --check                                                                             exit 0
+```
+
+No WU-14 checkbox is advanced by this subset. The first row still requires Cosmic prune/PAM/plugins/portals completeness; the second still requires the full WU-11 inventory and explicit final-module planner proof; the hardware row still requires its complete CLI string/exit-code contract; and the acceptance row still requires the full seven-module Galaxy plus overlay-sync evidence. Live package/service/desktop validation remains pending until a real catalog host and explicit matching integration target are supplied.

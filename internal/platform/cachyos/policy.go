@@ -34,6 +34,7 @@ type PlatformEvidence struct {
 	Apps            AppsObservation
 	AppsIconFetcher IconFetcher
 	Vicinae         VicinaeObservation
+	Desktop         DesktopObservation
 }
 
 // ObservationRequest is the canonical, immutable-by-copy list of authorized

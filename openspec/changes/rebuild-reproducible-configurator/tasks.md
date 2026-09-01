@@ -217,6 +217,8 @@ Specs: cachyos-platform (all remaining), acceptance-verification (Hardware verif
 - [ ] TRIANGULATE: full seven-module galaxy golden plan snapshot regenerated and asserted; extend `tools/sync-assets` declared copies with `overlays/galaxy/` (bounded generated diff). <!-- sdd-owner: implementation -->
 - [ ] Verify and prepare the work-unit diff: `go test ./... && go vet ./... && go run ./tools/sync-assets --check` exit 0; transition guard exits 0; baseline unchanged; record the unit-owned path list and `git diff --stat` as the bounded diff handoff. Staging/committing is deferred: it happens only after a separate explicit user authorization, with explicit unit-owned paths and never `git add -A`. <!-- sdd-owner: implementation -->
 
+2026-09-01 bounded WU-14.1–14.3 continuation: the authoritative package list, role/polkit/session files, production-capable package/file ports, and exact-target desktop validators are implemented and tested. None of the broad WU-14 rows above is checked yet: Cosmic removal/PAM/plugins/portals, the complete WU-11 check inventory, and the full seven-module/overlay acceptance proof remain pending. <!-- sdd-owner: implementation -->
+
 ## WU-15 — Pi exact packages, user-owned renders, 23-route dual rendering
 
 Specs: pi-configuration (Exact-pinned Pi package set; Desired pins versus resolved Pi versions; User-owned cataloged files), model-routes (all requirements). Design §9.1, §9.2.

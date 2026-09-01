@@ -13,6 +13,12 @@ Fixture evidence uses an allowlist of identifiers and statuses. It never include
 
 The amendment acceptance report is intentionally scoped as `portable-profile-amendment-three-module-fixture`. It proves the catalog, CachyOS policy, and evidence boundary added here. It does not substitute for the parent change's complete seven-module or live-host acceptance evidence.
 
+## Typed desktop subset
+
+The current WU-14 subset resolves the authoritative desktop package names from the embedded `templates/desktop/packages.pacman` asset and expands the former coarse workstation step into package, role-file, Quickshell-polkit, `.dmrc`, niri validation, Noctalia validation, and package-observation operations. Role files are rendered below the caller-observed home; host-owned fixed display, input-device, literal-home, and Cosmic-prune behavior remains separately authorized and default-deny.
+
+User-file publication uses one-time adoption backups and same-directory atomic replacement. The production verification adapter can run only after the existing exact host/`--integration-target` gate admits it. Its presence is **not** live-host evidence: no real target, receipt, package transaction, or desktop file was exercised by this slice.
+
 ## Parent integration contract
 
 | Parent work unit | Amendment handoff | Completion condition in parent |
