@@ -10,7 +10,13 @@ import (
 	"strings"
 	"testing"
 
+	"alex-cachyos/internal/catalog"
 	"alex-cachyos/internal/runner"
+)
+
+const (
+	testChromeCommit   = "0123456789abcdef0123456789abcdef01234567"
+	testChromePatchSHA = "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
 )
 
 func TestBootstrapRequestsUseEmbeddedListsAndExactDeltas(t *testing.T) {
@@ -18,6 +24,8 @@ func TestBootstrapRequestsUseEmbeddedListsAndExactDeltas(t *testing.T) {
 		InstalledPackages: []InstalledPackage{{"zsh", true}, {"paru", false}, {"firefox", true}, {"vim", true}, {"linux-cachyos-lts", true}, {"cachyos-zsh-config", true}, {"ananicy-cpp", true}},
 		FirefoxI18N:       []string{"firefox-i18n-de"},
 		Services:          []ServiceObservation{{Unit: "ananicy-cpp.service", Installed: true}},
+		HomeRoot:          t.TempDir(),
+		ChromePin:         testChromePin(),
 		Boot:              BootObservation{MkinitcpioHasPlymouth: true, GrubHasSplash: true, GrubGeneratorAvailable: true},
 	}
 	p := mustPlan(t, input)
@@ -34,9 +42,27 @@ func TestBootstrapRequestsUseEmbeddedListsAndExactDeltas(t *testing.T) {
 			t.Errorf("%s = %#v, want %#v", tc.op, got, tc.want)
 		}
 	}
+	sourceDir := filepath.Join(input.HomeRoot, ".cache", "alex-cachyos", "aur", "google-chrome")
+	checkout := request(t, p, "bootstrap.chrome.checkout")
+	if checkout.Executable != "/usr/bin/git" || !reflect.DeepEqual(checkout.Argv, []string{"-C", sourceDir, "checkout", "--detach", testChromeCommit}) {
+		t.Fatalf("Chrome checkout = %#v", checkout)
+	}
+	verify := request(t, p, "bootstrap.chrome.patch.verify")
+	if verify.Executable != "/usr/bin/sha256sum" || verify.Cwd != sourceDir || string(verify.Stdin) != testChromePatchSHA+"  .alex-cachyos-source.patch\n" {
+		t.Fatalf("Chrome patch verification = %#v", verify)
+	}
 	chrome := request(t, p, "bootstrap.chrome.install")
-	if chrome.Executable != "/usr/bin/paru" || chrome.Scope != runner.ScopeUser || !reflect.DeepEqual(chrome.Argv, []string{"-S", "--needed", "--noconfirm", "google-chrome"}) {
-		t.Fatalf("chrome = %#v", chrome)
+	if chrome.Executable != "/usr/bin/paru" || chrome.Scope != runner.ScopeUser || !reflect.DeepEqual(chrome.Argv, []string{"-B", "--install", "--needed", "--noconfirm", sourceDir}) {
+		t.Fatalf("Chrome local install = %#v", chrome)
+	}
+	for _, operation := range []string{"bootstrap.chrome.fetch", "bootstrap.chrome.checkout", "bootstrap.chrome.patch.materialize", "bootstrap.chrome.patch.verify", "bootstrap.chrome.install"} {
+		request := request(t, p, operation)
+		if err := runner.ValidateCommandRequest(request); err != nil {
+			t.Errorf("Chrome request %q invalid: %v", operation, err)
+		}
+		if request.Shell || request.Executable == "/usr/bin/pkexec" || slices.Contains(request.Argv, "-S") || slices.Contains(request.Argv, "google-chrome") {
+			t.Errorf("Chrome request %q bypasses pinned local typed execution: %#v", operation, request)
+		}
 	}
 	plymouth := request(t, p, bootstrapBootPlymouthEdit)
 	if plymouth.Executable != "/usr/bin/python3" || !reflect.DeepEqual(plymouth.Argv, []string{"-", "/etc/mkinitcpio.conf"}) || len(plymouth.Stdin) == 0 || len(plymouth.Stdin) > runner.MaxStdinBytes {
@@ -246,6 +272,7 @@ func TestBootstrapBootScriptsFailClosedWithoutTouchingOtherFile(t *testing.T) {
 func TestBootstrapRequestServiceObservationsRejectDuplicatesAndUsePackageState(t *testing.T) {
 	_, err := BuildBootstrapRequestPlan(BootstrapInputs{
 		InstalledPackages: append(wantedPackages(), InstalledPackage{Name: "ufw"}),
+		ChromeInstalled:   true,
 		Services: []ServiceObservation{
 			{Unit: "ufw", Enabled: false, Active: false},
 			{Unit: "ufw.service", Enabled: true, Active: false},
@@ -256,6 +283,7 @@ func TestBootstrapRequestServiceObservationsRejectDuplicatesAndUsePackageState(t
 	}
 	plan, err := BuildBootstrapRequestPlan(BootstrapInputs{
 		InstalledPackages: append(wantedPackages(), InstalledPackage{Name: "ufw"}),
+		ChromeInstalled:   true,
 		Services:          []ServiceObservation{{Unit: "ufw.service", Installed: false, Enabled: false, Active: false}},
 	})
 	if err != nil {
@@ -266,6 +294,7 @@ func TestBootstrapRequestServiceObservationsRejectDuplicatesAndUsePackageState(t
 	}
 	plan, err = BuildBootstrapRequestPlan(BootstrapInputs{
 		InstalledPackages: wantedPackages(),
+		ChromeInstalled:   true,
 		Services:          []ServiceObservation{{Unit: "ufw.service", Installed: true, Enabled: false, Active: false}},
 	})
 	if err != nil {
@@ -279,6 +308,7 @@ func TestBootstrapRequestServiceObservationsRejectDuplicatesAndUsePackageState(t
 func TestBootstrapRequestPlanDeepCopiesMutableResults(t *testing.T) {
 	input := BootstrapInputs{
 		InstalledPackages: []InstalledPackage{{Name: "zsh", Explicit: true}},
+		ChromeInstalled:   true,
 		Boot:              BootObservation{GrubHasSplash: true, GrubGeneratorAvailable: true},
 	}
 	plan := mustPlan(t, input)
@@ -345,4 +375,8 @@ func requestOperations(plan BootstrapRequestPlan) []string {
 
 func wantedPackages() []InstalledPackage {
 	return []InstalledPackage{{"cosmic-store", true}, {"flatpak", true}, {"nano", true}, {"paru", true}, {"zsh", true}}
+}
+
+func testChromePin() catalog.AURLocalPin {
+	return catalog.AURLocalPin{SourceCommit: testChromeCommit, PatchSHA256: testChromePatchSHA}
 }

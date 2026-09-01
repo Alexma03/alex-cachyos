@@ -9,10 +9,12 @@ import (
 	"strings"
 	"testing"
 
+	"alex-cachyos/internal/catalog"
 	"alex-cachyos/internal/planner"
 )
 
 func TestBootstrapModuleBindsCompleteRequestIdentityAndEvidence(t *testing.T) {
+	home := t.TempDir()
 	input := BootstrapObservation{
 		InstalledPackages: map[string]string{
 			"zsh":                "5.9",
@@ -31,7 +33,9 @@ func TestBootstrapModuleBindsCompleteRequestIdentityAndEvidence(t *testing.T) {
 			{Unit: "ananicy-cpp.service", Enabled: false, Active: false},
 			{Unit: "ufw.service", Enabled: true, Active: false},
 		},
-		Boot: BootObservation{MkinitcpioHasPlymouth: true, GrubHasSplash: true, GrubGeneratorAvailable: true},
+		Boot:     BootObservation{MkinitcpioHasPlymouth: true, GrubHasSplash: true, GrubGeneratorAvailable: true},
+		HomeRoot: home,
+		Catalog:  &catalog.Catalog{Pins: &catalog.Pins{AURLocal: map[string]catalog.AURLocalPin{"google-chrome": testChromePin()}}},
 	}
 	requestPlan := mustPlan(t, BootstrapInputs{
 		InstalledPackages: []InstalledPackage{
@@ -46,6 +50,8 @@ func TestBootstrapModuleBindsCompleteRequestIdentityAndEvidence(t *testing.T) {
 		},
 		FirefoxI18N: []string{"firefox-i18n-de"},
 		Services:    input.Services,
+		HomeRoot:    home,
+		ChromePin:   testChromePin(),
 		Boot:        input.Boot,
 	})
 	module := mustBootstrapModule(t, input)
@@ -243,7 +249,7 @@ func TestBootstrapModuleRejectsDuplicateOrContradictoryServices(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, err := BuildBootstrapModule(BootstrapObservation{InstalledPackages: map[string]string{"ufw": "1", "ananicy-cpp": "1"}, Services: test.services})
+			_, err := BuildBootstrapModule(BootstrapObservation{InstalledPackages: map[string]string{"ufw": "1", "ananicy-cpp": "1"}, ChromeInstalled: true, Services: test.services})
 			if err == nil || !strings.Contains(err.Error(), "service") {
 				t.Fatalf("error = %v", err)
 			}
@@ -279,6 +285,7 @@ func TestBootstrapModuleUsesExactCachyOSLTSAllowlist(t *testing.T) {
 	requestPlan := mustPlan(t, BootstrapInputs{
 		InstalledPackages: append(wantedPackages(), InstalledPackage{Name: "unrelated-lts"}, InstalledPackage{Name: "firefox-i18n-lts"}),
 		FirefoxI18N:       []string{"firefox-i18n-lts"},
+		ChromeInstalled:   true,
 	})
 	remove := request(t, requestPlan, bootstrapPackageRemove)
 	if !slices.Contains(remove.Argv, "firefox-i18n-lts") {
@@ -291,6 +298,7 @@ func TestBootstrapModuleAndRequestKernelDoNotAliasMutationInputs(t *testing.T) {
 		InstalledPackages: map[string]string{"paru": "2", "zsh": "5", "ananicy-cpp": "1"},
 		ExplicitSet:       []string{"zsh"},
 		Services:          []ServiceObservation{{Unit: "ananicy-cpp.service", Enabled: false, Active: false}},
+		ChromeInstalled:   true,
 		Boot:              BootObservation{MkinitcpioHasPlymouth: true, GrubHasSplash: true, GrubGeneratorAvailable: true},
 	}
 	first := mustBootstrapModule(t, input)
@@ -310,6 +318,7 @@ func TestBootstrapModuleAndRequestKernelDoNotAliasMutationInputs(t *testing.T) {
 		InstalledPackages: map[string]string{"paru": "2", "zsh": "5", "ananicy-cpp": "1"},
 		ExplicitSet:       []string{"zsh"},
 		Services:          []ServiceObservation{{Unit: "ananicy-cpp.service", Enabled: false, Active: false}},
+		ChromeInstalled:   true,
 		Boot:              BootObservation{MkinitcpioHasPlymouth: true, GrubHasSplash: true, GrubGeneratorAvailable: true},
 	})
 	if !reflect.DeepEqual(first, second) {
@@ -321,6 +330,7 @@ func TestBootstrapModuleAndRequestKernelDoNotAliasMutationInputs(t *testing.T) {
 		InstalledPackages: map[string]string{"paru": "2", "zsh": "5", "ananicy-cpp": "1"},
 		ExplicitSet:       []string{"zsh"},
 		Services:          []ServiceObservation{{Unit: "ananicy-cpp.service", Enabled: false, Active: false}},
+		ChromeInstalled:   true,
 		Boot:              BootObservation{MkinitcpioHasPlymouth: true, GrubHasSplash: true, GrubGeneratorAvailable: true},
 	})
 	freshEdit := bootstrapStep(t, planner.Module{Steps: freshPlan.Steps}, bootstrapBootGRUBEdit)
@@ -347,6 +357,52 @@ func TestBootstrapModuleReconcilesDependencyOwnedChrome(t *testing.T) {
 	}
 	if !reflect.DeepEqual(desired["requestedNames"], []any{"google-chrome"}) {
 		t.Fatalf("Chrome ownership reconciliation names = %#v", desired["requestedNames"])
+	}
+}
+
+func TestBootstrapModuleUsesResolvedPolicyChromePin(t *testing.T) {
+	policy := galaxyPolicy("bootstrap", "", false)
+	policy.Desired.Pins = &catalog.Pins{AURLocal: map[string]catalog.AURLocalPin{
+		"google-chrome": testChromePin(),
+	}}
+	evidence := readyEvidence()
+	delete(evidence.Bootstrap.InstalledPackages, "google-chrome")
+	evidence.Bootstrap.ChromeInstalled = false
+	evidence.Bootstrap.HomeRoot = t.TempDir()
+	evidence.Bootstrap.Catalog = &catalog.Catalog{Pins: &catalog.Pins{AURLocal: map[string]catalog.AURLocalPin{
+		"google-chrome": {SourceCommit: strings.Repeat("0", 40), PatchSHA256: strings.Repeat("f", 64)},
+	}}}
+
+	modules, err := BuildModules(policy, evidence)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bootstrap := moduleNamed(t, modules, bootstrapModuleName)
+	assertStepSourceCommit(t, bootstrap, "bootstrap.chrome.checkout", testChromeCommit)
+	assertStepPatchSHA256(t, bootstrap, "bootstrap.chrome.patch.verify", testChromePatchSHA)
+	for _, edge := range [][2]string{
+		{bootstrapChromeCheckout, bootstrapChromeFetch},
+		{bootstrapChromePatchMaterialize, bootstrapChromeCheckout},
+		{bootstrapChromePatchVerify, bootstrapChromePatchMaterialize},
+		{bootstrapChromeInstall, bootstrapChromePatchVerify},
+	} {
+		if !slices.Contains(bootstrapStep(t, bootstrap, edge[0]).DependsOn, edge[1]) {
+			t.Fatalf("Chrome step %q lacks verified-source dependency %q", edge[0], edge[1])
+		}
+	}
+	install := bootstrapStep(t, bootstrap, bootstrapChromeInstall)
+	var desired struct {
+		PackageManager string `json:"packageManager"`
+		Request        struct {
+			Executable string   `json:"executable"`
+			Argv       []string `json:"argv"`
+		} `json:"request"`
+	}
+	if err := json.Unmarshal(install.Desired, &desired); err != nil {
+		t.Fatal(err)
+	}
+	if desired.PackageManager != "paru-local-build" || desired.Request.Executable != "/usr/bin/paru" || len(desired.Request.Argv) == 0 || desired.Request.Argv[0] != "-B" || slices.Contains(desired.Request.Argv, "-S") {
+		t.Fatalf("Chrome install is not bound to the resolved local source: %#v", desired)
 	}
 }
 

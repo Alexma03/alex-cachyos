@@ -293,3 +293,44 @@ bash -n apply bin/alex-cachyos-webapp-launch lib/*.sh modules/*.sh
 python3 profile JSON validation                    exit 0
 go run ./tools/sync-assets --check                 exit 0
 ```
+
+## WU-12 reconciliation — bootstrap proof and pinned Chrome source (2026-09-01)
+
+WU-12.2 was reconciled against the current typed bootstrap implementation. The existing structural tests already prove the full-system repository/transaction policy and pre-transaction versions, exact wanted/removal names, explicit ownership, independent atomic GRUB and Plymouth chains, package-authoritative ananicy-cpp/UFW services, marker-block zsh convergence, and the exact CachyOS LTS deferral allowlist. The remaining concrete defect was `bootstrap.chrome.install`: it still planned mutable `paru -S google-chrome` resolution.
+
+RED:
+
+```text
+go test ./internal/platform/cachyos -run 'TestBootstrap(RequestsUseEmbeddedListsAndExactDeltas|ModuleUsesResolvedPolicyChromePin)' -count=1
+build failed: BootstrapInputs lacked HomeRoot/ChromePin and BootstrapObservation lacked HomeRoot/Catalog
+exit 1
+```
+
+GREEN binds missing Chrome installation to the resolved catalog `aurLocal.google-chrome` pin. The module now emits typed user-scope operations to clone/fetch the canonical AUR remote, detach at `sourceCommit`, materialize the commit patch deterministically, verify `patchSHA256` with `sha256sum --check --strict`, and install only the verified local directory with `paru -B --install --needed --noconfirm`. The install step depends on checksum verification. Runtime observations cannot override resolved policy pins, and disabled/installed Chrome paths do not require a pin or cross the network boundary.
+
+Focused evidence:
+
+```text
+go test ./internal/platform/cachyos -run 'TestBootstrap(RequestsUseEmbeddedListsAndExactDeltas|ModuleUsesResolvedPolicyChromePin)' -count=1
+ok  alex-cachyos/internal/platform/cachyos  0.006s
+
+go test ./internal/platform/cachyos -count=1
+ok  alex-cachyos/internal/platform/cachyos  0.429s
+```
+
+Canonical verification:
+
+```text
+go test ./...                                      exit 0
+bash -n apply bin/alex-cachyos-webapp-launch lib/*.sh modules/*.sh
+                                                    exit 0
+python3 profile JSON validation                    exit 0
+go run ./tools/sync-assets --check                 exit 0
+go vet ./...                                       exit 0
+```
+
+Runtime harness: **N/A**. The changed boundary is a pure request planner exercised through typed fake-plan assertions. A live Chrome AUR build/install would mutate the developer's package database and violate the explicit no-live-mutation boundary.
+
+Fingerprint reconciliation deliberately did not advance WU-12.3–12.6. The current `fingerprint.go` exposes only one policy-gated high-level step; it does not yet prove exact installed commit+pkgrel convergence, a closed source/checksum/build/artifact binding, `pacman -U`, or byte-exact PAM overlay application. The repository packaging files contain a static commit and patch checksum, and `packaging/` is already sync-declared, but no real resolved Galaxy catalog pin or production observation exists. Marking those tasks complete would invent the missing authority and hardware-dependent evidence.
+
+Rollback boundary: revert the four bootstrap implementation/test files and these two cumulative OpenSpec updates. No live package, service, boot, or fingerprint state was changed.

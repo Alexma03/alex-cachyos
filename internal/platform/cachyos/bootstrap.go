@@ -17,19 +17,23 @@ const (
 	BootstrapPacmanRepositoryPolicy  = "configured-cachyos-arch"
 	BootstrapPacmanTransactionPolicy = "full-system"
 
-	bootstrapModuleName       = "bootstrap"
-	bootstrapPackageInstall   = "bootstrap.packages.install"
-	bootstrapPackageRemove    = "bootstrap.packages.remove"
-	bootstrapPackageExplicit  = "bootstrap.packages.explicit"
-	bootstrapPackageRollback  = "bootstrap.packages.rollback.external-system"
-	bootstrapBootPlymouthEdit = "bootstrap.boot.plymouth-edit"
-	bootstrapBootMkinitcpio   = "bootstrap.boot.mkinitcpio"
-	bootstrapBootGRUBEdit     = "bootstrap.boot.grub-edit"
-	bootstrapBootGRUBGenerate = "bootstrap.boot.grub-generate"
-	bootstrapBootGRUBPublish  = "bootstrap.boot.grub-publish"
-	bootstrapChromeInstall    = "bootstrap.chrome.install"
-	bootstrapZsh              = "bootstrap.zsh"
-	bootstrapLTS              = "bootstrap.kernel.lts"
+	bootstrapModuleName             = "bootstrap"
+	bootstrapPackageInstall         = "bootstrap.packages.install"
+	bootstrapPackageRemove          = "bootstrap.packages.remove"
+	bootstrapPackageExplicit        = "bootstrap.packages.explicit"
+	bootstrapPackageRollback        = "bootstrap.packages.rollback.external-system"
+	bootstrapBootPlymouthEdit       = "bootstrap.boot.plymouth-edit"
+	bootstrapBootMkinitcpio         = "bootstrap.boot.mkinitcpio"
+	bootstrapBootGRUBEdit           = "bootstrap.boot.grub-edit"
+	bootstrapBootGRUBGenerate       = "bootstrap.boot.grub-generate"
+	bootstrapBootGRUBPublish        = "bootstrap.boot.grub-publish"
+	bootstrapChromeFetch            = "bootstrap.chrome.fetch"
+	bootstrapChromeCheckout         = "bootstrap.chrome.checkout"
+	bootstrapChromePatchMaterialize = "bootstrap.chrome.patch.materialize"
+	bootstrapChromePatchVerify      = "bootstrap.chrome.patch.verify"
+	bootstrapChromeInstall          = "bootstrap.chrome.install"
+	bootstrapZsh                    = "bootstrap.zsh"
+	bootstrapLTS                    = "bootstrap.kernel.lts"
 )
 
 const (
@@ -46,6 +50,9 @@ type BootstrapObservation struct {
 	Services          []ServiceObservation
 	Boot              BootObservation
 	ChromeInstalled   bool
+	HomeRoot          string
+	Catalog           *catalog.Catalog
+	ChromeSource      BootstrapAURSourceObservation
 	ZshConverged      bool
 }
 
@@ -150,7 +157,9 @@ func buildBootstrapModuleForPolicy(policy catalog.ResolvedHostPolicy, evidence P
 		blocked = append(blocked, blockedPolicyStep(bootstrapModuleName, gated.capability, observed))
 	}
 
-	module, err := buildBootstrapModule(evidence.Bootstrap, authorization)
+	observation := evidence.Bootstrap
+	observation.Catalog = &policy.Desired
+	module, err := buildBootstrapModule(observation, authorization)
 	if err != nil {
 		return planner.Module{}, err
 	}
@@ -168,7 +177,22 @@ func requestInput(observation BootstrapObservation) (BootstrapInputs, map[string
 		explicit[name] = true
 	}
 
-	input := BootstrapInputs{Boot: observation.Boot, ChromeInstalled: observation.ChromeInstalled || hasPackage(installed, "google-chrome")}
+	input := BootstrapInputs{
+		Boot:            observation.Boot,
+		ChromeInstalled: observation.ChromeInstalled || hasPackage(installed, "google-chrome"),
+		HomeRoot:        observation.HomeRoot,
+		ChromeSource:    observation.ChromeSource,
+	}
+	if !input.ChromeInstalled {
+		if observation.Catalog == nil || observation.Catalog.Pins == nil {
+			return BootstrapInputs{}, nil, nil, fmt.Errorf("missing catalog AUR/local pin for google-chrome")
+		}
+		pin, ok := observation.Catalog.Pins.AURLocal["google-chrome"]
+		if !ok {
+			return BootstrapInputs{}, nil, nil, fmt.Errorf("missing catalog AUR/local pin for google-chrome")
+		}
+		input.ChromePin = pin
+	}
 	for _, name := range sortedPackageNames(installed) {
 		input.InstalledPackages = append(input.InstalledPackages, InstalledPackage{
 			Name:     name,
@@ -273,9 +297,18 @@ func requestStep(
 		desired["change"] = "generate-staged-grub"
 		observed["grubGeneratorAvailable"] = input.Boot.GrubGeneratorAvailable
 		inverseOperation = "bootstrap.boot.grub-restore"
-	case bootstrapChromeInstall:
+	case bootstrapChromeFetch, bootstrapChromeCheckout, bootstrapChromePatchMaterialize, bootstrapChromePatchVerify, bootstrapChromeInstall:
+		desired["package"] = "google-chrome"
+		desired["sourceDir"] = requestPlan.ChromeSourceDir
+		desired["sourceCommit"] = requestPlan.ChromePin.SourceCommit
+		desired["patchSHA256"] = requestPlan.ChromePin.PatchSHA256
+		observed["source"] = input.ChromeSource
+		inverseOperation = request.Operation + ".restore"
+		if request.Operation != bootstrapChromeInstall {
+			break
+		}
 		desired["requestedNames"] = []string{"google-chrome"}
-		desired["packageManager"] = "paru"
+		desired["packageManager"] = "paru-local-build"
 		observed["beforeVersions"] = versionSubset(installed, []string{"google-chrome"})
 		inverseOperation = "bootstrap.chrome.remove"
 	default:
@@ -472,9 +505,13 @@ func wireBootstrapDependencies(steps []planner.Step) {
 			lastPackageStep = id
 		}
 	}
-	for _, id := range []string{"bootstrap.service.ananicy-cpp", "bootstrap.service.ufw", bootstrapChromeInstall} {
+	for _, id := range []string{"bootstrap.service.ananicy-cpp", "bootstrap.service.ufw", bootstrapChromeFetch} {
 		add(id, lastPackageStep)
 	}
+	add(bootstrapChromeCheckout, bootstrapChromeFetch)
+	add(bootstrapChromePatchMaterialize, bootstrapChromeCheckout)
+	add(bootstrapChromePatchVerify, bootstrapChromePatchMaterialize)
+	add(bootstrapChromeInstall, bootstrapChromePatchVerify)
 	if _, ok := indices[bootstrapChromeInstall]; ok {
 		add(bootstrapZsh, bootstrapChromeInstall)
 	} else {
@@ -483,15 +520,20 @@ func wireBootstrapDependencies(steps []planner.Step) {
 }
 
 var bootstrapRanks = map[string]int{
-	bootstrapLTS:              0,
-	bootstrapPackageInstall:   1,
-	bootstrapPackageRemove:    2,
-	bootstrapPackageExplicit:  3,
-	bootstrapBootPlymouthEdit: 4,
-	bootstrapBootMkinitcpio:   5,
-	bootstrapBootGRUBEdit:     6,
-	bootstrapBootGRUBGenerate: 7,
-	bootstrapBootGRUBPublish:  8,
+	bootstrapLTS:                    0,
+	bootstrapPackageInstall:         1,
+	bootstrapPackageRemove:          2,
+	bootstrapPackageExplicit:        3,
+	bootstrapBootPlymouthEdit:       4,
+	bootstrapBootMkinitcpio:         5,
+	bootstrapBootGRUBEdit:           6,
+	bootstrapBootGRUBGenerate:       7,
+	bootstrapBootGRUBPublish:        8,
+	bootstrapChromeFetch:            30,
+	bootstrapChromeCheckout:         31,
+	bootstrapChromePatchMaterialize: 32,
+	bootstrapChromePatchVerify:      33,
+	bootstrapChromeInstall:          34,
 }
 
 func bootstrapStepRank(id string) int {

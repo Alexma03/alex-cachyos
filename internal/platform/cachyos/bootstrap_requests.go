@@ -1,12 +1,15 @@
 package cachyos
 
 import (
-	"alex-cachyos/internal/runner"
-	"alex-cachyos/templates"
 	"fmt"
 	"io/fs"
+	"path/filepath"
 	"sort"
 	"strings"
+
+	"alex-cachyos/internal/catalog"
+	"alex-cachyos/internal/runner"
+	"alex-cachyos/templates"
 )
 
 type InstalledPackage struct {
@@ -21,11 +24,20 @@ type BootObservation struct {
 	MkinitcpioHasPlymouth                 bool
 	GrubHasSplash, GrubGeneratorAvailable bool
 }
+type BootstrapAURSourceObservation struct {
+	Exists      bool
+	Remote      string
+	Commit      string
+	PatchSHA256 string
+}
 type BootstrapInputs struct {
 	InstalledPackages []InstalledPackage
 	FirefoxI18N       []string
 	Services          []ServiceObservation
 	ChromeInstalled   bool
+	HomeRoot          string
+	ChromePin         catalog.AURLocalPin
+	ChromeSource      BootstrapAURSourceObservation
 	Boot              BootObservation
 }
 type GenerationFailurePolicy string
@@ -47,6 +59,8 @@ type BootstrapRequestPlan struct {
 	Requests                                   []runner.CommandRequest
 	MissingWanted, RemovalDelta, ExplicitDelta []string
 	GRUBPublish                                *GRUBPublishDescriptor
+	ChromePin                                  catalog.AURLocalPin
+	ChromeSourceDir                            string
 }
 
 const (
@@ -139,11 +153,62 @@ func buildBootstrapRequestPlan(input BootstrapInputs, authorization bootstrapAut
 		}
 	}
 	if !input.ChromeInstalled {
-		if err := plan.add(makeRequest("bootstrap.chrome.install", "/usr/bin/paru", []string{"-S", "--needed", "--noconfirm", "google-chrome"}, runner.ScopeUser, runner.NetworkRequired, nil)); err != nil {
+		if err := addPinnedChromeRequests(&plan, input); err != nil {
 			return BootstrapRequestPlan{}, err
 		}
 	}
 	return plan, nil
+}
+
+func addPinnedChromeRequests(plan *BootstrapRequestPlan, input BootstrapInputs) error {
+	if input.HomeRoot == "" || !filepath.IsAbs(input.HomeRoot) || filepath.Clean(input.HomeRoot) != input.HomeRoot || hasControl(input.HomeRoot) {
+		return fmt.Errorf("invalid bootstrap Chrome home root")
+	}
+	if err := catalog.ValidateAURLocalPin("google-chrome", input.ChromePin); err != nil {
+		return fmt.Errorf("invalid bootstrap Chrome pin: %w", err)
+	}
+	remote := "https://aur.archlinux.org/google-chrome.git"
+	if input.ChromeSource.Exists && input.ChromeSource.Remote != "" && input.ChromeSource.Remote != remote {
+		return fmt.Errorf("invalid bootstrap Chrome source remote")
+	}
+	sourceDir := filepath.Join(input.HomeRoot, ".cache", "alex-cachyos", "aur", "google-chrome")
+	patchName := ".alex-cachyos-source.patch"
+	patchPath := filepath.Join(sourceDir, patchName)
+	plan.ChromePin = input.ChromePin
+	plan.ChromeSourceDir = sourceDir
+
+	fetchArgv := []string{"clone", "--filter=blob:none", "--no-checkout", remote, sourceDir}
+	if input.ChromeSource.Exists {
+		fetchArgv = []string{"-C", sourceDir, "fetch", "origin", input.ChromePin.SourceCommit}
+	}
+	requests := []struct {
+		operation  string
+		executable string
+		argv       []string
+		cwd        string
+		network    runner.NetworkPolicy
+		stdin      []byte
+	}{
+		{bootstrapChromeFetch, "/usr/bin/git", fetchArgv, input.HomeRoot, runner.NetworkRequired, nil},
+		{bootstrapChromeCheckout, "/usr/bin/git", []string{"-C", sourceDir, "checkout", "--detach", input.ChromePin.SourceCommit}, input.HomeRoot, runner.NetworkNone, nil},
+		{bootstrapChromePatchMaterialize, "/usr/bin/git", []string{"-C", sourceDir, "diff-tree", "--root", "--no-commit-id", "--binary", "-p", "--output=" + patchPath, input.ChromePin.SourceCommit}, input.HomeRoot, runner.NetworkNone, nil},
+		{bootstrapChromePatchVerify, "/usr/bin/sha256sum", []string{"--check", "--strict", "-"}, sourceDir, runner.NetworkNone, []byte(input.ChromePin.PatchSHA256 + "  " + patchName + "\n")},
+		{bootstrapChromeInstall, "/usr/bin/paru", []string{"-B", "--install", "--needed", "--noconfirm", sourceDir}, input.HomeRoot, runner.NetworkRequired, nil},
+	}
+	for _, spec := range requests {
+		request, err := makeRequest(spec.operation, spec.executable, spec.argv, runner.ScopeUser, spec.network, spec.stdin)
+		if err != nil {
+			return err
+		}
+		request.Cwd = spec.cwd
+		if err := runner.ValidateCommandRequest(request); err != nil {
+			return err
+		}
+		if err := plan.add(request, nil); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 func (p *BootstrapRequestPlan) add(request runner.CommandRequest, err error) error {
 	if err != nil {
