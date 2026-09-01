@@ -22,7 +22,7 @@ func helperCommand(mode string) CommandRequest {
 		Scope:        ScopeUser,
 		Network:      NetworkNone,
 		OutputPolicy: OutputCaptureRedacted,
-		Timeout:      time.Second,
+		Timeout:      5 * time.Second,
 		OutputLimit:  1024,
 	}
 }

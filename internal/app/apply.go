@@ -9,6 +9,7 @@ import (
 	planexecutor "alex-cachyos/internal/executor"
 	"alex-cachyos/internal/planner"
 	"alex-cachyos/internal/receipt"
+	"alex-cachyos/internal/runner"
 	"alex-cachyos/internal/statepath"
 )
 
@@ -48,6 +49,23 @@ func NewApplier(run Executor, stores ReceiptStoreFactory) *Applier {
 }
 func NewApplierWithStore(run Executor, store *receipt.Store) *Applier {
 	return NewApplier(run, func(statepath.Paths) *receipt.Store { return store })
+}
+
+// NewCommandApplier connects the convergent executor to the typed command
+// boundary. Tests inject a fake/elevation runner; production passes an
+// ElevationRunner backed by ExecRunner.
+func NewCommandApplier(observer planexecutor.Observer, commandRunner runner.Runner, requests []runner.CommandRequest, network planexecutor.NetworkPort, stores ReceiptStoreFactory) (*Applier, error) {
+	mutator, err := planexecutor.NewCommandMutator(commandRunner, requests, network)
+	if err != nil {
+		return nil, err
+	}
+	return NewApplier(planexecutor.NewExecutor(observer, mutator), stores), nil
+}
+
+// NewProductionApplier is the production execution wiring: argv-only ExecRunner
+// for user work and the pkexec elevation decorator for system work.
+func NewProductionApplier(observer planexecutor.Observer, requests []runner.CommandRequest, network planexecutor.NetworkPort, stores ReceiptStoreFactory) (*Applier, error) {
+	return NewCommandApplier(observer, runner.NewElevationRunner(runner.ExecRunner{}), requests, network, stores)
 }
 
 // Apply validates and isolates its inputs before any lock or executor call, then

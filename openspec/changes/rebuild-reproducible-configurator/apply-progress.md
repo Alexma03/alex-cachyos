@@ -86,3 +86,68 @@ WU-8 tasks 8.3 and 8.6 are complete in the isolated `codex/rebuild-wu8-security`
 - Full: `go test ./... && go vet ./... && bash -n apply bin/alex-cachyos-webapp-launch lib/*.sh modules/*.sh && python3 -c 'import json; from pathlib import Path; [json.load(p.open()) for p in Path("profiles").glob("*.json")]' && go run ./tools/sync-assets --check` — exit 0.
 - Unit-owned paths: `go.mod`, `go.sum`, `internal/safefile/**`, `internal/adopt/adopt.go`, `internal/adopt/security_test.go`, `internal/adopt/web_search.go`, `internal/receipt/store.go`, `internal/receipt/store_security_test.go`, `openspec/changes/rebuild-reproducible-configurator/tasks.md`, and this file.
 - Rollback is path-bounded to the unit-owned inventory. All tests use temporary directories; no host file, real Pi state, dependency checkout, index, or main worktree is modified.
+
+## WU-10 continuation — production execution and privileged helper
+
+Tasks **10.4, 10.5, and 10.6** are complete in the isolated `wu10-helper`
+worktree. No commit, staging, push, PR, or main-worktree mutation was performed.
+
+### RED → GREEN → TRIANGULATE → REFACTOR evidence
+
+- **RED:** `go test ./internal/runner ./internal/executor` failed to compile on
+  the missing typed self-helper and command-mutator APIs. `go test
+  ./cmd/alex-cachyos` then failed to compile on the missing hidden helper runtime.
+- **GREEN:** added content-addressed user staging, a bounded typed JSON helper
+  request, the fixed same-binary `pkexec` invocation, root-side exact
+  destination/mode policy, source owner/regular-file/hash revalidation,
+  descriptor-relative candidate creation and atomic rename, and the production
+  planner-step-to-command bridge.
+- **TRIANGULATE:** rejection tests cover unknown operation, non-allowlisted
+  destination, mode/hash mismatch, symlink source, trailing/oversized input,
+  whole-batch prevalidation, and a deterministic source-path swap after open.
+  Explicit spies prove dry-run reaches neither the command runner nor network
+  authorization and check reaches only its observation port.
+- **REFACTOR:** production wiring is kept behind `NewCommandApplier` and
+  `NewProductionApplier`; the platform-specific exact destination policy stays
+  in `internal/platform/cachyos`, while the generic root transaction stays in
+  `internal/runner`. The pre-existing runner subprocess fixture timeout was
+  raised from one to five seconds after race instrumentation proved one second
+  was too short; the behavior-specific timeout test remains unchanged.
+
+### Verification evidence
+
+- Focused: `go test -count=1 -run
+  'Test(SelfHelper|CommandMutator|CommandApplier|CheckUsesOnly)'
+  ./internal/runner ./internal/executor ./internal/app ./cmd/alex-cachyos
+  ./internal/platform/cachyos` — exit 0.
+- Race-focused: `go test -race -count=1 ./internal/runner
+  ./internal/executor ./internal/app ./cmd/alex-cachyos` — exit 0 after the
+  fixture-timeout correction.
+- Full: `go test ./... && go vet ./... && bash -n apply
+  bin/alex-cachyos-webapp-launch lib/*.sh modules/*.sh && python3 -c 'import
+  json; from pathlib import Path; [json.load(p.open()) for p in
+  Path("profiles").glob("*.json")]' && go run ./tools/sync-assets --check` —
+  exit 0.
+- Runtime harness: `go run ./cmd/alex-cachyos --list` — exit 0 with the seven
+  expected modules. Live `pkexec` was intentionally not invoked; the same-binary
+  wrapper and root transaction are covered through the fake elevation port and
+  isolated temporary directories.
+
+### Work-unit boundary and rollback
+
+- Unit-owned paths: `cmd/alex-cachyos/main.go`,
+  `cmd/alex-cachyos/main_test.go`, `internal/app/apply.go`,
+  `internal/app/apply_test.go`, `internal/app/check_test.go`,
+  `internal/executor/command.go`, `internal/executor/command_test.go`,
+  `internal/platform/cachyos/privileged.go`,
+  `internal/platform/cachyos/privileged_test.go`, `internal/runner/exec_test.go`,
+  `internal/runner/self_helper.go`, `internal/runner/self_helper_test.go`, and
+  this WU-10 ledger update.
+- Bounded work-unit stat, including the seven untracked unit-owned files omitted
+  by plain `git diff --stat`: **14 paths, 998 insertions, 9 deletions** (tracked
+  stat: 7 paths, 184 insertions, 9 deletions; untracked: 7 paths, 814 lines).
+- Rollback boundary: remove the new helper/command-adapter files and tests, then
+  revert the narrow constructor, CLI helper dispatch, runner fixture timeout,
+  and WU-10 ledger hunks. Staged source files and destination candidates are
+  outside repository state and are cleaned/refused by the helper transaction;
+  no live system file was touched by verification.

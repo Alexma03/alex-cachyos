@@ -9,6 +9,28 @@ import (
 	"testing"
 )
 
+type checkIsolationSpy struct {
+	observations int
+	networkCalls int
+	mutations    int
+}
+
+func (s *checkIsolationSpy) Observe(context.Context, CheckRequest) (CheckSnapshot, error) {
+	s.observations++
+	return CheckSnapshot{}, nil
+}
+
+func (s *checkIsolationSpy) AuthorizeNetwork() { s.networkCalls++ }
+func (s *checkIsolationSpy) Mutate()           { s.mutations++ }
+
+func TestCheckUsesOnlyTheObservationPort(t *testing.T) {
+	spy := &checkIsolationSpy{}
+	report := NewChecker(spy).Check(context.Background(), CheckRequest{})
+	if report.Drift || spy.observations != 1 || spy.networkCalls != 0 || spy.mutations != 0 {
+		t.Fatalf("check escaped isolation: report=%#v spy=%#v", report, spy)
+	}
+}
+
 func TestClassifyManagedFileChecksEvidenceBeforeOwnership(t *testing.T) {
 	expected := ManagedFileInventory{Path: "/etc/example.conf", DesiredHash: "desired"}
 	cases := []struct {

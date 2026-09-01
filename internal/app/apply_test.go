@@ -7,12 +7,15 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"alex-cachyos/internal/executor"
 	"alex-cachyos/internal/planner"
 	"alex-cachyos/internal/receipt"
+	"alex-cachyos/internal/runner"
 	"alex-cachyos/internal/statepath"
 )
 
@@ -182,6 +185,34 @@ func TestApplyDryRunGroupsAndSkipsLock(t *testing.T) {
 	got := readApplyReceipt(t, result.ReceiptPath)
 	if got.Status != "success" || len(got.Plan.NetworkRequired) != 2 || got.Plan.NetworkRequired[0] != "install" || got.Plan.NetworkRequired[1] != "fetch" {
 		t.Fatalf("dry receipt = %#v", got)
+	}
+}
+
+func TestCommandApplierRunsSystemMutationThroughFakeElevation(t *testing.T) {
+	request := runner.CommandRequest{
+		Operation: "system.publish", Executable: "/usr/bin/tool", Cwd: "/", Scope: runner.ScopeSystem,
+		Network: runner.NetworkNone, OutputPolicy: runner.OutputDiscard, Timeout: time.Second, OutputLimit: 1024,
+	}
+	delegate := runner.NewFakeRunner(runner.Expectation{Operation: request.Operation, Argv: []string{request.Executable}})
+	observations := 0
+	observer := executor.ObserverFunc(func(context.Context, planner.Step) ([]byte, error) {
+		observations++
+		if observations < 3 {
+			return []byte(`{"value":"old"}`), nil
+		}
+		return []byte(`{"value":"ready"}`), nil
+	})
+	applier, err := NewCommandApplier(observer, runner.NewElevationRunner(delegate), []runner.CommandRequest{request}, nil, receipt.NewStoreFromPaths)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan := applyPlan(planner.NetworkNone)
+	plan.Steps[0].ID, plan.Steps[0].Scope = request.Operation, planner.ScopeSystem
+	result := mustApply(t, applier, ApplyInput{Envelope: applyEnvelope("8"), Plan: plan, Paths: applyPaths(t)})
+	requests := delegate.Requests()
+	if result.Receipt.Status != "success" || len(requests) != 1 || requests[0].Executable != "/usr/bin/pkexec" ||
+		!reflect.DeepEqual(requests[0].Argv, []string{request.Executable}) {
+		t.Fatalf("production apply result/requests = %#v / %#v", result, requests)
 	}
 }
 
