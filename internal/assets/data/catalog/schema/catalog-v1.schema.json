@@ -5,12 +5,51 @@
   "type": "object",
   "required": ["catalogVersion", "kind"],
   "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "required": ["kind"],
+        "properties": {
+          "kind": {
+            "enum": ["Global", "Role"]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "roles": false,
+          "riskPolicy": false
+        }
+      }
+    }
+  ],
   "properties": {
     "catalogVersion": {
       "const": 1
     },
     "kind": {
       "enum": ["Global", "Role", "Host"]
+    },
+    "roles": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "riskPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fingerprintPam": { "type": "boolean" },
+        "fixedDisplays": { "type": "boolean" },
+        "fixedInputDevices": { "type": "boolean" },
+        "literalHomePaths": { "type": "boolean" },
+        "bootstrapSystemUpdate": { "type": "boolean" },
+        "bootstrapPackageRemoval": { "type": "boolean" },
+        "bootstrapBootMutation": { "type": "boolean" },
+        "cosmicPrune": { "type": "boolean" }
+      }
     },
     "modules": {
       "type": "object",

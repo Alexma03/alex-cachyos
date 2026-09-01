@@ -30,6 +30,21 @@ func Normalize(catalog Catalog) ([]byte, error) {
 	}); err != nil {
 		return nil, err
 	}
+	if catalog.Roles != nil {
+		if err := writeCatalogField(&normalized, &first, "roles", func(value *bytes.Buffer) error {
+			return writeStringSlice(value, catalog.Roles)
+		}); err != nil {
+			return nil, err
+		}
+	}
+	if catalog.RiskPolicy != nil {
+		if err := writeCatalogField(&normalized, &first, "riskPolicy", func(value *bytes.Buffer) error {
+			writeRiskPolicy(value, *catalog.RiskPolicy)
+			return nil
+		}); err != nil {
+			return nil, err
+		}
+	}
 	if catalog.Modules != nil {
 		if err := writeCatalogField(&normalized, &first, "modules", func(value *bytes.Buffer) error {
 			return writeModuleSet(value, catalog.Modules)
@@ -135,6 +150,19 @@ func writeStringSlice(buffer *bytes.Buffer, values []string) error {
 	}
 	buffer.WriteByte(']')
 	return nil
+}
+
+func writeRiskPolicy(buffer *bytes.Buffer, policy RiskPolicy) {
+	buffer.WriteByte('{')
+	for i, capability := range riskCapabilities {
+		if i != 0 {
+			buffer.WriteByte(',')
+		}
+		_ = writeJSONString(buffer, string(capability))
+		buffer.WriteByte(':')
+		buffer.WriteString(strconv.FormatBool(policy.Allows(capability)))
+	}
+	buffer.WriteByte('}')
 }
 
 func writePins(buffer *bytes.Buffer, pins *Pins) error {

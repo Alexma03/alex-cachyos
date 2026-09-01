@@ -13,8 +13,8 @@
     },
     {
       "path": "catalog/schema/catalog-v1.schema.json",
-      "size": 3086,
-      "sha256": "a5c7cb49845985b1a22f378942ddd13bdf9a706f76a615f4bb985662fda6a2c1"
+      "size": 4040,
+      "sha256": "841b71117cf688b465d926b80aef29f63a721251a7a9bf84f3532a17597b7cc1"
     },
     {
       "path": "overlays/galaxy/etc/greetd/cosmic-greeter.toml",

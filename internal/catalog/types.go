@@ -14,6 +14,74 @@ const (
 // a Catalog also means that the modules field was omitted.
 type ModuleSet map[string]bool
 
+// RiskCapability identifies one closed, host-owned authorization. Runtime
+// observations may deny an authorized capability but are never authority to
+// enable one.
+type RiskCapability string
+
+const (
+	RiskFingerprintPAM          RiskCapability = "fingerprintPam"
+	RiskFixedDisplays           RiskCapability = "fixedDisplays"
+	RiskFixedInputDevices       RiskCapability = "fixedInputDevices"
+	RiskLiteralHomePaths        RiskCapability = "literalHomePaths"
+	RiskBootstrapSystemUpdate   RiskCapability = "bootstrapSystemUpdate"
+	RiskBootstrapPackageRemoval RiskCapability = "bootstrapPackageRemoval"
+	RiskBootstrapBootMutation   RiskCapability = "bootstrapBootMutation"
+	RiskCosmicPrune             RiskCapability = "cosmicPrune"
+)
+
+var riskCapabilities = [...]RiskCapability{
+	RiskFingerprintPAM,
+	RiskFixedDisplays,
+	RiskFixedInputDevices,
+	RiskLiteralHomePaths,
+	RiskBootstrapSystemUpdate,
+	RiskBootstrapPackageRemoval,
+	RiskBootstrapBootMutation,
+	RiskCosmicPrune,
+}
+
+// RiskCapabilities returns the canonical capability order as a fresh slice.
+func RiskCapabilities() []RiskCapability {
+	return append([]RiskCapability(nil), riskCapabilities[:]...)
+}
+
+// RiskPolicy is a closed set of host-owned opt-ins. Zero values are denied.
+type RiskPolicy struct {
+	FingerprintPAM          bool `yaml:"fingerprintPam" json:"fingerprintPam"`
+	FixedDisplays           bool `yaml:"fixedDisplays" json:"fixedDisplays"`
+	FixedInputDevices       bool `yaml:"fixedInputDevices" json:"fixedInputDevices"`
+	LiteralHomePaths        bool `yaml:"literalHomePaths" json:"literalHomePaths"`
+	BootstrapSystemUpdate   bool `yaml:"bootstrapSystemUpdate" json:"bootstrapSystemUpdate"`
+	BootstrapPackageRemoval bool `yaml:"bootstrapPackageRemoval" json:"bootstrapPackageRemoval"`
+	BootstrapBootMutation   bool `yaml:"bootstrapBootMutation" json:"bootstrapBootMutation"`
+	CosmicPrune             bool `yaml:"cosmicPrune" json:"cosmicPrune"`
+}
+
+// Allows reports catalog authority only. Unknown capabilities are denied.
+func (policy RiskPolicy) Allows(capability RiskCapability) bool {
+	switch capability {
+	case RiskFingerprintPAM:
+		return policy.FingerprintPAM
+	case RiskFixedDisplays:
+		return policy.FixedDisplays
+	case RiskFixedInputDevices:
+		return policy.FixedInputDevices
+	case RiskLiteralHomePaths:
+		return policy.LiteralHomePaths
+	case RiskBootstrapSystemUpdate:
+		return policy.BootstrapSystemUpdate
+	case RiskBootstrapPackageRemoval:
+		return policy.BootstrapPackageRemoval
+	case RiskBootstrapBootMutation:
+		return policy.BootstrapBootMutation
+	case RiskCosmicPrune:
+		return policy.CosmicPrune
+	default:
+		return false
+	}
+}
+
 // PinsDocument is the presence-aware YAML representation of source-specific
 // pins. Each source map is a pointer so an omitted source remains distinct from
 // an explicitly empty source map.
@@ -65,6 +133,8 @@ type Pins struct {
 type Document struct {
 	CatalogVersion *int                            `yaml:"catalogVersion" json:"catalogVersion,omitempty"`
 	Kind           *Kind                           `yaml:"kind" json:"kind,omitempty"`
+	Roles          *[]string                       `yaml:"roles" json:"roles,omitempty"`
+	RiskPolicy     *RiskPolicy                     `yaml:"riskPolicy" json:"riskPolicy,omitempty"`
 	Modules        *ModuleSet                      `yaml:"modules" json:"modules,omitempty"`
 	Templates      *[]string                       `yaml:"templates" json:"templates,omitempty"`
 	Overlays       *[]string                       `yaml:"overlays" json:"overlays,omitempty"`
@@ -86,6 +156,8 @@ type CheckoutPinDocument struct {
 type Catalog struct {
 	CatalogVersion int                    `json:"catalogVersion"`
 	Kind           Kind                   `json:"kind"`
+	Roles          []string               `json:"roles,omitempty"`
+	RiskPolicy     *RiskPolicy            `json:"riskPolicy,omitempty"`
 	Modules        ModuleSet              `json:"modules,omitempty"`
 	Templates      []string               `json:"templates,omitempty"`
 	Overlays       []string               `json:"overlays,omitempty"`

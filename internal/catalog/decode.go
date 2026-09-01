@@ -170,6 +170,13 @@ func catalogFromDocument(document Document) (Catalog, error) {
 		return Catalog{}, errors.New("catalog document is missing required fields")
 	}
 	catalog := Catalog{CatalogVersion: *document.CatalogVersion, Kind: *document.Kind}
+	if document.Roles != nil {
+		catalog.Roles = copyStrings(*document.Roles)
+	}
+	if document.RiskPolicy != nil {
+		policy := *document.RiskPolicy
+		catalog.RiskPolicy = &policy
+	}
 	if document.Modules != nil {
 		catalog.Modules = make(ModuleSet, len(*document.Modules))
 		for name, enabled := range *document.Modules {

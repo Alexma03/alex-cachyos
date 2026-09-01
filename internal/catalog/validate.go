@@ -54,6 +54,26 @@ func Validate(catalog Catalog, lookup AssetLookup) error {
 	if catalog.Kind != KindGlobal && catalog.Kind != KindRole && catalog.Kind != KindHost {
 		issues = append(issues, ValidationError{Path: "/kind", Message: "unsupported catalog kind"})
 	}
+	if catalog.Kind != KindHost {
+		if catalog.Roles != nil {
+			issues = append(issues, ValidationError{Path: "/roles", Message: "roles are host-owned"})
+		}
+		if catalog.RiskPolicy != nil {
+			issues = append(issues, ValidationError{Path: "/riskPolicy", Message: "risk policy is host-owned"})
+		}
+	}
+	seenRoles := make(map[string]struct{}, len(catalog.Roles))
+	for i, role := range catalog.Roles {
+		path := fmt.Sprintf("/roles/%d", i)
+		if role == "" {
+			issues = append(issues, ValidationError{Path: path, Message: "role name is empty"})
+			continue
+		}
+		if _, exists := seenRoles[role]; exists {
+			issues = append(issues, ValidationError{Path: path, Message: fmt.Sprintf("duplicate role %q", role)})
+		}
+		seenRoles[role] = struct{}{}
+	}
 
 	modules := make([]string, 0, len(catalog.Modules))
 	for name := range catalog.Modules {
@@ -82,7 +102,7 @@ func Validate(catalog Catalog, lookup AssetLookup) error {
 		}{{"remote", pin.Remote}, {"branch", pin.Branch}, {"commit", pin.Commit}} {
 			if field.value == "" {
 				issues = append(issues, ValidationError{
-					Path: childPointer(childPointer("/checkoutPins", name), field.name),
+					Path:    childPointer(childPointer("/checkoutPins", name), field.name),
 					Message: "required checkout-pin field is empty",
 				})
 			}

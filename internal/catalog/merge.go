@@ -51,6 +51,13 @@ func MergeDocuments(documents []Document) (Catalog, error) {
 				merged.Modules[name] = (*document.Modules)[name]
 			}
 		}
+		if document.Roles != nil {
+			merged.Roles = copyStrings(*document.Roles)
+		}
+		if document.RiskPolicy != nil {
+			policy := *document.RiskPolicy
+			merged.RiskPolicy = &policy
+		}
 		if document.Templates != nil {
 			merged.Templates = copyStrings(*document.Templates)
 		}
