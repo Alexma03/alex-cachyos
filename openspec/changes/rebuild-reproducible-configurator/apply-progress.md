@@ -151,3 +151,145 @@ worktree. No commit, staging, push, PR, or main-worktree mutation was performed.
   and WU-10 ledger hunks. Staged source files and destination candidates are
   outside repository state and are cleaned/refused by the helper transaction;
   no live system file was touched by verification.
+
+## WU-13 — Platform devtools + apps + Vicinae (2026-09-01)
+
+Status: **implemented and verified in the isolated `wu13-vicinae` worktree; not staged or committed**.
+
+### RED → GREEN → TRIANGULATE → REFACTOR evidence
+
+| Task | RED evidence | GREEN / triangulation evidence |
+|---|---|---|
+| Devtools | `go test ./internal/platform/cachyos` failed to compile because `DevtoolsObservation`, `DevtoolsFileObservation`, and `BuildDevtoolsRequestPlan` did not exist. | The factory loads embedded mise/npm/pnpm assets, renders `@HOME@`, converges one marker block per zsh/bash/fish file, emits typed Pacman and mise requests, and matches golden digest `010d5519a63cc75e3d35fefde625d798b5d269c3a8e4fbc662604c5b94251085`. |
+| Apps | The same focused RED failed because `AppsObservation`, `AppsFileObservation`, and apps plan factories did not exist. | Exact embedded Pacman/AUR names, catalog `AURLocalPin` commit/checksum validation, services/groups, webapp launcher/files, and typed favicon fallback pass focused tests. `paru` is an unelevated user-scope request; system Pacman/systemctl/usermod requests remain system-scoped for the WU-10 elevation decorator/helper. |
+| Vicinae | The same focused RED failed because `VicinaeObservation` and the Vicinae plan factories did not exist. | Read-only salvage evidence from `32df398` was adapted without cherry-picking: exact `vicinae-bin`, catalog-pinned local `paru` build/install, user service enable/start, embedded environment/shortcut files, strict COSMIC launcher rewrite, removal/inverse behavior, and typed observations pass. |
+| Triangulation | A temporary golden sentinel intentionally failed with the emitted deterministic digest before it was fixed. | Devtools, apps, and Vicinae each prove a fully satisfied second plan. Planner invariants prove every apps step precedes a desktop module that declares `DependsOn: [apps]`. Marker rewrite and COSMIC launcher rewrite are idempotent. |
+
+Focused verification:
+
+```text
+go test ./internal/platform/cachyos -count=1
+ok alex-cachyos/internal/platform/cachyos
+
+go vet ./internal/platform/cachyos
+exit 0
+```
+
+Full verification and transition guard:
+
+```text
+go test ./...                                      exit 0
+go vet ./...                                       exit 0
+bash -n apply bin/alex-cachyos-webapp-launch lib/*.sh modules/*.sh
+                                                    exit 0
+python3 -c 'import json; from pathlib import Path; [json.load(p.open()) for p in Path("profiles").glob("*.json")]'
+                                                    exit 0
+go run ./tools/sync-assets --check                 exit 0
+```
+
+### WU-13 corrective apply — Vicinae catalog pin enforcement
+
+The remaining Vicinae defect was the same reproducibility class already corrected for Apps: `vicinae.package.install` emitted `paru -S --needed --noconfirm vicinae-bin`, so the catalog `sourceCommit` and `patchSHA256` could not control the installed bytes.
+
+Focused RED:
+
+```text
+go test ./internal/platform/cachyos -run TestVicinaeFactoryUsesExactPackageAndUserServiceRequests -count=1
+build failed: VicinaeObservation had no catalog pin authority for the regression
+exit 1
+```
+
+GREEN replaces the mutable package-name install with the catalog-owned sequence: clone/fetch the canonical AUR remote, detach at the exact `sourceCommit`, materialize the commit patch deterministically, verify `patchSHA256` using `sha256sum --check --strict`, then run `paru -B --install` against the verified local source directory. The final install step depends on checksum verification. Every operation remains argv-only, user-scoped, validator-approved, and secret-safe; service and file behavior is unchanged.
+
+Focused evidence:
+
+```text
+go test ./internal/platform/cachyos -run TestVicinaeFactoryUsesExactPackageAndUserServiceRequests -count=1
+ok alex-cachyos/internal/platform/cachyos
+
+go test ./internal/platform/cachyos -run TestVicinae -count=1
+ok alex-cachyos/internal/platform/cachyos
+
+go test ./internal/platform/cachyos -count=1
+ok alex-cachyos/internal/platform/cachyos
+```
+
+Integration wiring remains outside this isolated WU-13 correction and is reserved for the combined integration target.
+
+Post-correction canonical verification:
+
+```text
+go test ./...                                      exit 0
+bash -n apply bin/alex-cachyos-webapp-launch lib/*.sh modules/*.sh
+                                                    exit 0
+python3 profile JSON validation                    exit 0
+go run ./tools/sync-assets --check                 exit 0
+go vet ./...                                       exit 0
+git diff --check                                   exit 0
+```
+
+Baseline remains `a6aee2adc3a575038e1511ca8d68d96aeecc716e`; no staging, commit, push, PR, or main-worktree mutation occurred.
+
+Unit-owned paths:
+
+- `internal/platform/cachyos/devtools.go`
+- `internal/platform/cachyos/devtools_test.go`
+- `internal/platform/cachyos/apps.go`
+- `internal/platform/cachyos/apps_test.go`
+- `internal/platform/cachyos/vicinae.go`
+- `internal/platform/cachyos/vicinae_test.go`
+- `openspec/changes/rebuild-reproducible-configurator/tasks.md`
+- `openspec/changes/rebuild-reproducible-configurator/apply-progress.md`
+
+Bounded unit diff stat, counting the six intended untracked Go files together with the two tracked OpenSpec updates:
+
+```text
+8 files changed, 3007 insertions(+), 5 deletions(-)
+```
+
+### WU-13 corrective apply — pin-enforced AUR/local installation
+
+The fresh apply gate rejected the first GREEN because the catalog pins were only recorded as planner metadata while installation still used `paru -S <name>`. That command resolves mutable AUR heads and therefore did not let the requested source commit and checksum control the installed bytes.
+
+Corrective RED:
+
+```text
+go test ./internal/platform/cachyos -run TestAppsAURInstallationsAreBoundToExactSourceAndChecksumPins -count=1
+--- FAIL: TestAppsAURInstallationsAreBoundToExactSourceAndChecksumPins
+missing request "apps.aur.ai-usagebar-bin.checkout"; only the aggregate mutable apps.packages.aur.install request existed
+exit 1
+```
+
+Corrective GREEN binds every missing AUR/local package to five argv-only user-scope operations: clone/fetch its canonical AUR Git remote, detach at the catalog `sourceCommit`, materialize that commit's binary patch deterministically, verify the catalog `patchSHA256` with `sha256sum --check --strict`, then run `paru -B --install` against that verified local directory. The install step depends on the checksum-verification step; changing either pin changes the corresponding request identity. No shell, `sudo`, embedded `pkexec`, or WU-10 helper bypass was introduced. Pacman/systemctl/usermod requests remain system-scoped for the WU-10 elevation decorator.
+
+Exact race evidence:
+
+```text
+go test -race ./internal/platform/cachyos -count=1
+ok  alex-cachyos/internal/platform/cachyos  7.676s
+exit 0
+```
+
+Runtime-harness evidence:
+
+```text
+paru --help | grep -E -- 'paru \{-B --build\}|-i --install' | head -2
+    paru {-B --build}       [dir(s)]
+    -i --install          Install package as well as building
+exit 0
+```
+
+A live AUR installation harness is **N/A** for this isolated work unit: it would fetch/build third-party packages and install them into the developer's real CachyOS package database, violating the hardware-independent fake-runner requirement and the explicit no-host-mutation boundary. The focused test is the applicable deterministic harness: it validates every generated request, exact commit/checksum propagation, dependency binding, local-directory install argv, pin-sensitive identities, and user/system scope without executing host mutations.
+
+Corrective verification:
+
+```text
+go test ./internal/platform/cachyos -count=1       exit 0 (0.417s)
+go test -race ./internal/platform/cachyos -count=1 exit 0 (7.676s)
+go test ./...                                      exit 0
+go vet ./...                                       exit 0
+bash -n apply bin/alex-cachyos-webapp-launch lib/*.sh modules/*.sh
+                                                    exit 0
+python3 profile JSON validation                    exit 0
+go run ./tools/sync-assets --check                 exit 0
+```

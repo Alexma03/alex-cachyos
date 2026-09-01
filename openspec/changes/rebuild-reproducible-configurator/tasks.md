@@ -201,11 +201,11 @@ Specs: cachyos-platform (Module content mapped one-to-one; Explicit package owne
 
 Specs: cachyos-platform (Module content mapped one-to-one; Webapp install with icon fallback). Design §11.
 
-- [ ] RED `internal/platform/cachyos/devtools_test.go`: mise plus deterministic npm/pnpm configs with marker blocks, golden plan asserted. Evidence: failing test output. <!-- sdd-owner: implementation -->
-- [ ] RED `internal/platform/cachyos/apps_test.go`: exact-name pacman inventory plus commit/checksum-pinned AUR/local sources; docker/tailscale/nordvpn services and groups; webapps from `name|url|icon_url` with Chrome `--app` launchers in `~/.local/bin`; remote icon failure yields the typed favicon-fallback outcome without failing the module. Evidence: failing test output. <!-- sdd-owner: implementation -->
-- [ ] RED `internal/platform/cachyos/vicinae_test.go`: `vicinae-bin` plus user service enable/start checks. Evidence: failing test output; then GREEN `devtools.go`, `apps.go`, `vicinae.go` with catalog wiring. <!-- sdd-owner: implementation -->
-- [ ] TRIANGULATE: idempotent observations for each module (satisfied on second plan); apps ordering dependency on desktop asserted via the planner invariants. <!-- sdd-owner: implementation -->
-- [ ] Verify and prepare the work-unit diff: `go test ./... && go vet ./... && go run ./tools/sync-assets --check` exit 0; transition guard exits 0; baseline unchanged; record the unit-owned path list and `git diff --stat` as the bounded diff handoff. Staging/committing is deferred: it happens only after a separate explicit user authorization, with explicit unit-owned paths and never `git add -A`. <!-- sdd-owner: implementation -->
+- [x] RED `internal/platform/cachyos/devtools_test.go`: mise plus deterministic npm/pnpm configs with marker blocks, golden plan asserted. Evidence: failing test output. <!-- sdd-owner: implementation -->
+- [x] RED `internal/platform/cachyos/apps_test.go`: exact-name pacman inventory plus commit/checksum-pinned AUR/local sources; docker/tailscale/nordvpn services and groups; webapps from `name|url|icon_url` with Chrome `--app` launchers in `~/.local/bin`; remote icon failure yields the typed favicon-fallback outcome without failing the module. Evidence: failing test output. <!-- sdd-owner: implementation -->
+- [x] RED `internal/platform/cachyos/vicinae_test.go`: `vicinae-bin` installed from the catalog `sourceCommit`/`patchSHA256` through a verified local build, plus user service enable/start checks. Evidence: failing test output; then GREEN `devtools.go`, `apps.go`, `vicinae.go` with catalog wiring. <!-- sdd-owner: implementation -->
+- [x] TRIANGULATE: idempotent observations for each module (satisfied on second plan); apps ordering dependency on desktop asserted via the planner invariants. <!-- sdd-owner: implementation -->
+- [x] Verify and prepare the work-unit diff: `go test ./... && go vet ./... && go run ./tools/sync-assets --check` exit 0; transition guard exits 0; baseline unchanged; record the unit-owned path list and `git diff --stat` as the bounded diff handoff. Staging/committing is deferred: it happens only after a separate explicit user authorization, with explicit unit-owned paths and never `git add -A`. <!-- sdd-owner: implementation -->
 
 ## WU-14 — Platform desktop + verify + explicit hardware gate
 
