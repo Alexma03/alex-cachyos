@@ -1,0 +1,9 @@
+catalogVersion: 1
+kind: Global
+modules:
+  bootstrap: true
+  fingerprint: true
+  desktop: true
+pins:
+  npm:
+    fixture-package: 1.2.3-fixture

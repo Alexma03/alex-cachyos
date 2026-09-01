@@ -19,3 +19,16 @@ func TestPreservedFlagsAndCheckSelection(t *testing.T) {
 		t.Fatalf("unknown flag error = %v, code %d; want usage %d", err, ExitCode(err), ExitUsage)
 	}
 }
+
+func TestParseIntegrationTargetSeparatelyFromHost(t *testing.T) {
+	got, err := Parse([]string{"--host", "portable-synthetic", "--integration-target", "portable-synthetic"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Host != "portable-synthetic" || got.IntegrationTarget != "portable-synthetic" {
+		t.Fatalf("host/target = %q/%q", got.Host, got.IntegrationTarget)
+	}
+	if !strings.Contains(Usage(), "--integration-target HOST") {
+		t.Fatalf("usage does not document integration target: %q", Usage())
+	}
+}

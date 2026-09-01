@@ -1,0 +1,56 @@
+{
+  "schema": "alex-cachyos.acceptance-fixture/v1",
+  "scope": "portable-profile-amendment-three-module-fixture",
+  "evidenceKind": "fixture",
+  "host": "portable-synthetic",
+  "roles": [
+    "workstation"
+  ],
+  "mergeTrace": [
+    "global",
+    "role:workstation",
+    "host:portable-synthetic"
+  ],
+  "catalogDigest": "2ece2c57be20a629f3b9473ecbe88e39433fae3daccba69ff0599f6a50a6bba5",
+  "pins": [
+    "npm:fixture-package@1.2.3-fixture"
+  ],
+  "authorizedRisks": [],
+  "templates": [
+    "templates/roles/workstation/niri/config.kdl",
+    "templates/roles/workstation/noctalia/settings.toml",
+    "templates/roles/workstation/hyprwhspr/config.json"
+  ],
+  "overlays": null,
+  "planDigest": "248c7fcec1f33d6252c3892301ba01528c3ead74cf2cd857495c3f47c4f46e8e",
+  "stepOrder": [
+    "bootstrap.kernel.lts",
+    "bootstrap.packages.explicit",
+    "bootstrap.zsh",
+    "desktop.workstation"
+  ],
+  "offlineCheck": {
+    "drift": false,
+    "exitIntent": "success",
+    "hardwareIo": 0
+  },
+  "dryRun": {
+    "mutationCount": 0,
+    "networkMutationCount": 0,
+    "lockAcquisitions": 0,
+    "stateUnchanged": true,
+    "auditReceiptPublished": true
+  },
+  "convergence": {
+    "firstNoChange": false,
+    "secondNoChange": true,
+    "mutationCount": 4,
+    "secondMutationCount": 0
+  },
+  "rollback": {
+    "action": "remove-file",
+    "target": "/fixture/managed"
+  },
+  "productionValues": "deferred",
+  "liveEvidenceState": "deferred-to-parent-WU-20"
+}

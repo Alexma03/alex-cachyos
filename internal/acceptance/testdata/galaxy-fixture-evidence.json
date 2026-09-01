@@ -1,0 +1,84 @@
+{
+  "schema": "alex-cachyos.acceptance-fixture/v1",
+  "scope": "portable-profile-amendment-three-module-fixture",
+  "evidenceKind": "fixture",
+  "host": "galaxy",
+  "roles": [
+    "workstation"
+  ],
+  "mergeTrace": [
+    "global",
+    "role:workstation",
+    "host:galaxy"
+  ],
+  "catalogDigest": "052adbe31e971e310ff60274860c1c3e856e1c503a4cbc31839f4bd55a3cda1e",
+  "pins": [
+    "npm:fixture-package@1.2.3-fixture"
+  ],
+  "authorizedRisks": [
+    "fingerprintPam",
+    "fixedDisplays",
+    "fixedInputDevices",
+    "literalHomePaths",
+    "bootstrapSystemUpdate",
+    "bootstrapPackageRemoval",
+    "bootstrapBootMutation",
+    "cosmicPrune"
+  ],
+  "templates": [
+    "templates/roles/workstation/niri/config.kdl",
+    "templates/roles/workstation/noctalia/settings.toml",
+    "templates/roles/workstation/hyprwhspr/config.json",
+    "templates/hosts/galaxy/fixedDisplays/niri/config.kdl",
+    "templates/hosts/galaxy/fixedDisplays/noctalia/settings.toml",
+    "templates/hosts/galaxy/fixedInputDevices/hyprwhspr/config.json",
+    "templates/hosts/galaxy/fixedInputDevices/noctalia/settings.toml",
+    "templates/hosts/galaxy/literalHomePaths/noctalia/settings.toml"
+  ],
+  "overlays": [
+    "overlays/galaxy"
+  ],
+  "planDigest": "da074eac495040036211854a0ea870bd7e329379e8d7dcef5a9563ff35a38128",
+  "stepOrder": [
+    "bootstrap.boot.grub-edit",
+    "bootstrap.boot.grub-generate",
+    "bootstrap.boot.grub-publish",
+    "bootstrap.boot.plymouth-edit",
+    "bootstrap.boot.mkinitcpio",
+    "bootstrap.kernel.lts",
+    "bootstrap.packages.install",
+    "bootstrap.packages.remove",
+    "bootstrap.packages.explicit",
+    "bootstrap.zsh",
+    "fingerprint.pam",
+    "desktop.workstation",
+    "desktop.cosmic-prune",
+    "desktop.fixed-displays",
+    "desktop.fixed-input-devices",
+    "desktop.literal-home-paths"
+  ],
+  "offlineCheck": {
+    "drift": false,
+    "exitIntent": "success",
+    "hardwareIo": 0
+  },
+  "dryRun": {
+    "mutationCount": 0,
+    "networkMutationCount": 0,
+    "lockAcquisitions": 0,
+    "stateUnchanged": true,
+    "auditReceiptPublished": true
+  },
+  "convergence": {
+    "firstNoChange": false,
+    "secondNoChange": true,
+    "mutationCount": 16,
+    "secondMutationCount": 0
+  },
+  "rollback": {
+    "action": "remove-file",
+    "target": "/fixture/managed"
+  },
+  "productionValues": "deferred",
+  "liveEvidenceState": "deferred-to-parent-WU-20"
+}

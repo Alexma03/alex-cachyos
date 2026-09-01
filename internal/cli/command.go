@@ -9,7 +9,7 @@ import (
 )
 
 type Options struct {
-	Host                        string
+	Host, IntegrationTarget     string
 	Only, With, Without, Remove []string
 	DryRun, Check, List, Help   bool
 }
@@ -38,6 +38,7 @@ func Parse(args []string) (Options, error) {
 	f := flag.NewFlagSet("alex-cachyos", flag.ContinueOnError)
 	f.SetOutput(io.Discard)
 	f.StringVar(&o.Host, "host", "", "host name")
+	f.StringVar(&o.IntegrationTarget, "integration-target", "", "authorize live verification only on this matching host")
 	f.Var((*csvFlag)(&o.Only), "only", "comma-separated modules")
 	f.Var((*csvFlag)(&o.With), "with", "modules to add")
 	f.Var((*csvFlag)(&o.Without), "without", "modules to omit")
@@ -64,5 +65,5 @@ func Parse(args []string) (Options, error) {
 }
 
 func Usage() string {
-	return "Usage: alex-cachyos [options]\n\nOptions:\n  --host NAME\n  --only MODULES\n  --with MODULES\n  --without MODULES\n  --remove MODULES\n  --dry-run\n  --check\n  --list\n  -h, --help\n"
+	return "Usage: alex-cachyos [options]\n\nOptions:\n  --host NAME\n  --integration-target HOST\n  --only MODULES\n  --with MODULES\n  --without MODULES\n  --remove MODULES\n  --dry-run\n  --check\n  --list\n  -h, --help\n"
 }

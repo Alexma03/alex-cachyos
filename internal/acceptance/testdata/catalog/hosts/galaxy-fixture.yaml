@@ -1,0 +1,23 @@
+catalogVersion: 1
+kind: Host
+roles: [workstation]
+templates:
+  - templates/roles/workstation/niri/config.kdl
+  - templates/roles/workstation/noctalia/settings.toml
+  - templates/roles/workstation/hyprwhspr/config.json
+  - templates/hosts/galaxy/fixedDisplays/niri/config.kdl
+  - templates/hosts/galaxy/fixedDisplays/noctalia/settings.toml
+  - templates/hosts/galaxy/fixedInputDevices/hyprwhspr/config.json
+  - templates/hosts/galaxy/fixedInputDevices/noctalia/settings.toml
+  - templates/hosts/galaxy/literalHomePaths/noctalia/settings.toml
+overlays:
+  - overlays/galaxy
+riskPolicy:
+  fingerprintPam: true
+  fixedDisplays: true
+  fixedInputDevices: true
+  literalHomePaths: true
+  bootstrapSystemUpdate: true
+  bootstrapPackageRemoval: true
+  bootstrapBootMutation: true
+  cosmicPrune: true

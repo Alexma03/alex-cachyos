@@ -1,0 +1,6 @@
+catalogVersion: 1
+kind: Role
+templates:
+  - templates/roles/workstation/niri/config.kdl
+  - templates/roles/workstation/noctalia/settings.toml
+  - templates/roles/workstation/hyprwhspr/config.json
