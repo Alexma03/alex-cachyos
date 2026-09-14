@@ -24,15 +24,11 @@ context: |
   current Bash behavior from the planned Go design rather than assuming that
   implementation exists.
 
-  Expanded product scope: reproduce the user's Pi/Gentle AI development
-  environment across machines, including source checkouts for development
-  branches, Pi package installation, global prompts and configuration, 23
-  subagent profiles, model routing, receipt-driven development (RDD), web
-  research tooling, safe credential references, interactive OAuth logins, and a
-  temporary sdd-research override with a retirement condition after official
-  support lands. Credential values and biometric data must never be cataloged,
-  embedded, or written to receipts; authentication remains interactive or
-  reference-based.
+  Product scope: reproducible CachyOS system and desktop provisioning
+  across machines, including declarative catalog inheritance (global -> role -> host),
+  exact-pinned packages, Niri + Noctalia desktop environment, devtools (mise),
+  fingerprint hardware support, non-destructive Git checkouts, and immutable audit receipts.
+  Biometric templates and secrets are never stored or cataloged.
 
   Repository conventions: preserve idempotent module behavior, profile-driven
   activation, explicit package ownership, backup/restore conventions for

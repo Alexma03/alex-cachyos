@@ -1,6 +1,6 @@
 # Receipts
 
-Configurator state is kept outside Pi's `~/.pi` state:
+Configurator state is kept in standard XDG state directories:
 
 ```text
 $XDG_STATE_HOME/alex-cachyos/
