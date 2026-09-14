@@ -18,16 +18,16 @@ func TestDecodeCatalogMinimal(t *testing.T) {
 }
 
 func TestDecodeReturnsTypedCheckoutPins(t *testing.T) {
-	got, err := Decode([]byte("catalogVersion: 1\nkind: Host\nmodules:\n  verify: false\ncheckoutPins:\n  gentle-ai:\n    remote: https://example.invalid/gentle-ai.git\n    branch: main\n    commit: abc\n"))
+	got, err := Decode([]byte("catalogVersion: 1\nkind: Host\nmodules:\n  verify: false\ncheckoutPins:\n  upstream-repo:\n    remote: https://example.invalid/upstream-repo.git\n    branch: main\n    commit: abc\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if enabled, ok := got.Modules["verify"]; !ok || enabled {
 		t.Fatalf("typed module = %v, present=%v", enabled, ok)
 	}
-	want := CheckoutPin{Remote: "https://example.invalid/gentle-ai.git", Branch: "main", Commit: "abc"}
-	if got.CheckoutPins["gentle-ai"] != want {
-		t.Fatalf("typed checkout pin = %#v, want %#v", got.CheckoutPins["gentle-ai"], want)
+	want := CheckoutPin{Remote: "https://example.invalid/upstream-repo.git", Branch: "main", Commit: "abc"}
+	if got.CheckoutPins["upstream-repo"] != want {
+		t.Fatalf("typed checkout pin = %#v, want %#v", got.CheckoutPins["upstream-repo"], want)
 	}
 }
 
@@ -124,7 +124,7 @@ pins:
       url: http://downloads.example.invalid/tool.tar.zst
       sha256: not-a-digest
   localPathPackages:
-    gentle-pi: not-a-resolved-path
+    local-tool: not-a-resolved-path
 `))
 	if err != nil {
 		t.Fatalf("decode pins: %v", err)
@@ -149,7 +149,7 @@ pins:
 	if got.Pins.RemoteArtifacts["tool"] != (RemoteArtifactPin{URL: "http://downloads.example.invalid/tool.tar.zst", SHA256: "not-a-digest"}) {
 		t.Fatalf("typed remote pins = %#v", got.Pins.RemoteArtifacts)
 	}
-	if got.Pins.LocalPathPackages["gentle-pi"] != "not-a-resolved-path" {
+	if got.Pins.LocalPathPackages["local-tool"] != "not-a-resolved-path" {
 		t.Fatalf("typed local path pins = %#v", got.Pins.LocalPathPackages)
 	}
 }
@@ -218,7 +218,7 @@ pins:
   npm:
     provider: npm:provider@1.2.3
   localPathPackages:
-    gentle-pi: not-a-resolved-path
+    local-tool: not-a-resolved-path
 `)
 	document, err := DecodeDocument(data)
 	if err != nil {
@@ -229,8 +229,8 @@ pins:
 		t.Fatal(err)
 	}
 	(*document.Pins.NPM)["provider"] = "changed"
-	delete(*document.Pins.LocalPathPackages, "gentle-pi")
-	if catalog.Pins.NPM["provider"] != "npm:provider@1.2.3" || catalog.Pins.LocalPathPackages["gentle-pi"] != "not-a-resolved-path" {
+	delete(*document.Pins.LocalPathPackages, "local-tool")
+	if catalog.Pins.NPM["provider"] != "npm:provider@1.2.3" || catalog.Pins.LocalPathPackages["local-tool"] != "not-a-resolved-path" {
 		t.Fatalf("typed pins alias structural maps: %#v", catalog.Pins)
 	}
 }

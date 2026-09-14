@@ -144,14 +144,6 @@ func TestAllowsBiometricIdentifiersInStructuredFields(t *testing.T) {
 			},
 		},
 		{
-			name: "managed asset path",
-			mutate: func(doc map[string]any) {
-				assets := doc["managedAssets"].(map[string]any)
-				entries := assets["verifiedEntries"].([]any)
-				entries[0].(map[string]any)["path"] = "agents/biometric-helper.md"
-			},
-		},
-		{
 			name: "managed file path",
 			mutate: func(doc map[string]any) {
 				files := doc["managedFiles"].([]any)

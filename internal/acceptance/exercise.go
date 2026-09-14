@@ -139,8 +139,8 @@ func fixtureEnvelope(host, suffix string, second int) receipt.Receipt {
 		DesiredPackages:           receipt.DesiredPackages{PacmanNames: []string{}},
 		DesiredExactPins:          receipt.DesiredExactPins{NPM: empty(), SourceCheckouts: empty(), AURLocalSources: empty(), Patches: empty(), RemoteArtifacts: empty(), OptionalPacmanArtifacts: empty()},
 		ResolvedInstalledVersions: receipt.ResolvedInstalledVersions{Pacman: empty(), AUR: empty(), NPM: empty()},
-		SystemTransactions:        []receipt.SystemTransaction{}, Checkouts: []receipt.Checkout{}, GentleAIInvocations: []receipt.GentleAIInvocation{},
-		ManagedAssets: receipt.ManagedAssets{VerifiedEntries: []json.RawMessage{}}, Credentials: receipt.Credentials{ReferencedNames: []string{}},
+		SystemTransactions:        []receipt.SystemTransaction{}, Checkouts: []receipt.Checkout{},
+		Credentials: receipt.Credentials{ReferencedNames: []string{}},
 		Warnings: []string{}, Errors: []string{},
 	}
 }

@@ -37,7 +37,7 @@ func TestLoadRejectsInvalidCatalogs(t *testing.T) {
 		{"unknown field", "catalogVersion: 1\nkind: Host\nunexpected: true\n", "unexpected"},
 		{"unknown module", "catalogVersion: 1\nkind: Host\nmodules:\n  mystery: true\n", "mystery"},
 		{"missing asset", "catalogVersion: 1\nkind: Host\ntemplates:\n  - templates/missing.kdl\n", "templates/missing.kdl"},
-		{"checkout shape", "catalogVersion: 1\nkind: Host\ncheckoutPins:\n  gentle-ai:\n    remote: https://example.invalid/gentle-ai.git\n    branch: main\n", "commit"},
+		{"checkout shape", "catalogVersion: 1\nkind: Host\ncheckoutPins:\n  upstream-repo:\n    remote: https://example.invalid/upstream-repo.git\n    branch: main\n", "commit"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

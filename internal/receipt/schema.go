@@ -34,10 +34,6 @@ type Receipt struct {
 	ResolvedInstalledVersions  ResolvedInstalledVersions     `json:"resolvedInstalledVersions"`
 	SystemTransactions         []SystemTransaction           `json:"systemTransactions"`
 	Checkouts                  []Checkout                    `json:"checkouts"`
-	PiRuntime                  PiRuntime                     `json:"piRuntime"`
-	GentleAIInvocations        []GentleAIInvocation           `json:"gentleAiInvocations"`
-	ManagedAssets              ManagedAssets                 `json:"managedAssets"`
-	ReviewMode                 ReviewMode                    `json:"reviewMode"`
 	Credentials                Credentials                   `json:"credentials"`
 	Warnings                   []string                      `json:"warnings"`
 	Errors                     []string                      `json:"errors"`
@@ -87,15 +83,6 @@ type Checkout struct {
 	Repo string `json:"repo"`; Branch string `json:"branch"`; DesiredCommit string `json:"desiredCommit"`; BeforeCommit string `json:"beforeCommit"`; ResolvedCommit string `json:"resolvedCommit"`
 	Dirty bool `json:"dirty"`; DirtyCounts json.RawMessage `json:"dirtyCounts"`; Adopted bool `json:"adopted"`; Cloned bool `json:"cloned"`; Skipped bool `json:"skipped"`
 }
-type PiRuntime struct {
-	GentlePiCommit string `json:"gentlePiCommit"`; GentleAICommit string `json:"gentleAiCommit"`; ActivePath string `json:"activePath"`; Version string `json:"version"`
-	BinarySHA256 string `json:"binarySha256"`; BuildManifestSHA256 string `json:"buildManifestSha256"`; ResolverSource string `json:"resolverSource"`; SignedFallbackVersion string `json:"signedFallbackVersion"`; SignedFallbackManifestSHA256 string `json:"signedFallbackManifestSha256"`
-}
-type GentleAIInvocation struct { Operation string `json:"operation"`; AbsolutePath string `json:"absolutePath"`; BinarySHA256 string `json:"binarySha256"`; ResolverSource string `json:"resolverSource"` }
-type ManagedAssets struct {
-	ManifestPath string `json:"manifestPath"`; ManifestSHA256 string `json:"manifestSha256"`; VerifiedEntries []json.RawMessage `json:"verifiedEntries"`
-}
-type ReviewMode struct { Effective string `json:"effective"`; Deciding string `json:"deciding"` }
 type Credentials struct { ReferencedNames []string `json:"referencedNames"` }
 func Decode(data []byte) (Receipt, error) {
 	if err := Validate(data); err != nil { return Receipt{}, err }
@@ -121,7 +108,7 @@ func Validate(data []byte) error {
 	var top map[string]json.RawMessage
 	if json.Unmarshal(data, &top) != nil || top == nil { return ErrInvalid }
 	if !validKeys(top,
-		[]string{"schema", "runId", "command", "startedAt", "finishedAt", "status", "noChange", "host", "catalog", "selection", "plan", "steps", "managedFiles", "mutations", "desiredPackages", "desiredExactPins", "resolvedInstalledVersions", "systemTransactions", "checkouts", "piRuntime", "gentleAiInvocations", "managedAssets", "reviewMode", "credentials", "warnings", "errors"},
+		[]string{"schema", "runId", "command", "startedAt", "finishedAt", "status", "noChange", "host", "catalog", "selection", "plan", "steps", "managedFiles", "mutations", "desiredPackages", "desiredExactPins", "resolvedInstalledVersions", "systemTransactions", "checkouts", "credentials", "warnings", "errors"},
 		[]string{"rollbackOf", "reappliedCatalogTag"}) { return ErrInvalid }
 	for _, k := range []string{"runId", "command", "startedAt", "finishedAt", "status"} {
 		if !nonemptyString(top, k) { return ErrInvalid }
@@ -151,13 +138,6 @@ func Validate(data []byte) error {
 	if !objectsField(top, "systemTransactions", []string{"manager", "policy", "requestedNames", "versionChanges"}, nil, []string{"manager", "policy"}, nil, []string{"requestedNames", "versionChanges"}, nil, nil) { return ErrInvalid }
 	if !objectsField(top, "checkouts", []string{"repo", "branch", "desiredCommit", "beforeCommit", "resolvedCommit", "dirty", "dirtyCounts", "adopted", "cloned", "skipped"}, nil, []string{"repo", "branch", "desiredCommit", "beforeCommit", "resolvedCommit"}, []string{"dirty", "adopted", "cloned", "skipped"}, nil, []string{"dirtyCounts"}, nil) { return ErrInvalid }
 
-	runtime, ok := section(top, "piRuntime", []string{"gentlePiCommit", "gentleAiCommit", "activePath", "version", "binarySha256", "buildManifestSha256", "resolverSource", "signedFallbackVersion", "signedFallbackManifestSha256"}, nil)
-	if !ok || !allStrings(runtime, "gentlePiCommit", "gentleAiCommit", "activePath", "version", "binarySha256", "buildManifestSha256", "resolverSource", "signedFallbackVersion", "signedFallbackManifestSha256") { return ErrInvalid }
-	if !objectsField(top, "gentleAiInvocations", []string{"operation", "absolutePath", "binarySha256", "resolverSource"}, nil, []string{"operation", "absolutePath", "binarySha256", "resolverSource"}, nil, nil, nil, nil) { return ErrInvalid }
-	assets, ok := section(top, "managedAssets", []string{"manifestPath", "manifestSha256", "verifiedEntries"}, nil)
-	if !ok || !allStrings(assets, "manifestPath", "manifestSha256") || !arrayField(assets, "verifiedEntries") { return ErrInvalid }
-	review, ok := section(top, "reviewMode", []string{"effective", "deciding"}, nil)
-	if !ok || !allStrings(review, "effective", "deciding") { return ErrInvalid }
 	credentials, ok := section(top, "credentials", []string{"referencedNames"}, nil)
 	if !ok || !credentialNames(credentials) || !stringArray(credentials, "referencedNames") { return ErrInvalid }
 	if !stringArrayField(top, "warnings") || !stringArrayField(top, "errors") { return ErrInvalid }

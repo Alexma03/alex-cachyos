@@ -686,3 +686,18 @@ Unit-owned paths:
 - `internal/pi/testdata/render-authority.json`
 - `openspec/changes/rebuild-reproducible-configurator/tasks.md`
 - `openspec/changes/rebuild-reproducible-configurator/apply-progress.md`
+
+## 2026-09-14 — Pi / Gentle AI scope removal (User architectural decision)
+
+Per explicit user direction, the entire Pi, Gentle AI, subagent, and model route
+reproduction scope was removed from `alex-cachyos`. The installer scope is now
+exclusively focused on CachyOS system and desktop provisioning (Niri + Noctalia +
+packages + devtools + hardware/fingerprint).
+
+Actions taken:
+- Deleted `internal/pi/` entirely (packages, persona, render, routes, testdata).
+- Removed Pi package pin validators and references from `internal/catalog/` and test fixtures.
+- Removed Pi runtime, Gentle AI invocations, managed assets, and review mode from `internal/receipt/schema.go` and `testdata/receipts/golden-v1.json`.
+- Removed 6 Pi-specific specs from `openspec/changes/rebuild-reproducible-configurator/specs/`.
+- Dropped WU-15 through WU-19 in `tasks.md`.
+- All verification passed: `go test ./... -count=1`, `go vet ./...`, `go run ./tools/sync-assets --check`, and Bash transition guard.

@@ -292,7 +292,7 @@ pins:
   npm:
     provider: npm:provider@1.0.0
   localPathPackages:
-    gentle-pi: not-a-resolved-path
+    local-tool: not-a-resolved-path
 `)
 
 	got, err := MergeDocuments([]Document{global})
@@ -300,11 +300,11 @@ pins:
 		t.Fatalf("merge pins: %v", err)
 	}
 	(*global.Pins.NPM)["provider"] = "changed"
-	delete(*global.Pins.LocalPathPackages, "gentle-pi")
+	delete(*global.Pins.LocalPathPackages, "local-tool")
 	if got.Pins.NPM["provider"] != "npm:provider@1.0.0" {
 		t.Fatalf("npm pins alias input map: %#v", got.Pins.NPM)
 	}
-	if got.Pins.LocalPathPackages["gentle-pi"] != "not-a-resolved-path" {
+	if got.Pins.LocalPathPackages["local-tool"] != "not-a-resolved-path" {
 		t.Fatalf("local pins alias input map: %#v", got.Pins.LocalPathPackages)
 	}
 }

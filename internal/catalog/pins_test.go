@@ -35,13 +35,13 @@ func validCheckout() (CheckoutPin, CheckoutDestination) {
 		Branch: "main",
 		Commit: strings.ToUpper(testCommit),
 	}, CheckoutDestination{
-		Path:           "/home/alex/Projects/gentle-ai",
+		Path:           "/home/alex/Projects/upstream-repo",
 		ForbiddenRoots: []string{"/etc", "/usr", "/var", "/run"},
 	}
 }
 func TestValidateSourceCheckoutPin(t *testing.T) {
 	pin, destination := validCheckout()
-	if err := ValidateSourceCheckoutPin("gentle-ai", pin, destination); err != nil {
+	if err := ValidateSourceCheckoutPin("upstream-repo", pin, destination); err != nil {
 		t.Fatal(err)
 	}
 	tests := []struct {
@@ -52,14 +52,14 @@ func TestValidateSourceCheckoutPin(t *testing.T) {
 		{"noncanonical remote", func(p *CheckoutPin, _ *CheckoutDestination) { p.Remote += "/" }, "/remote"},
 		{"wrong branch", func(p *CheckoutPin, _ *CheckoutDestination) { p.Branch = "release" }, "/branch"},
 		{"short commit", func(p *CheckoutPin, _ *CheckoutDestination) { p.Commit = "abc" }, "/commit"},
-		{"relative destination", func(_ *CheckoutPin, d *CheckoutDestination) { d.Path = "Projects/gentle-ai" }, "/destination"},
-		{"forbidden destination", func(_ *CheckoutPin, d *CheckoutDestination) { d.Path = "/etc/gentle-ai" }, "/destination"},
+		{"relative destination", func(_ *CheckoutPin, d *CheckoutDestination) { d.Path = "Projects/upstream-repo" }, "/destination"},
+		{"forbidden destination", func(_ *CheckoutPin, d *CheckoutDestination) { d.Path = "/etc/upstream-repo" }, "/destination"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			gotPin, gotDestination := validCheckout()
 			test.edit(&gotPin, &gotDestination)
-			assertPinError(t, ValidateSourceCheckoutPin("gentle-ai", gotPin, gotDestination), "gentle-ai", test.path)
+			assertPinError(t, ValidateSourceCheckoutPin("upstream-repo", gotPin, gotDestination), "upstream-repo", test.path)
 		})
 	}
 }
@@ -91,14 +91,6 @@ func TestValidateAURLocalAndRemoteArtifactPins(t *testing.T) {
 		assertPinError(t, ValidateRemoteArtifactPin("tool", RemoteArtifactPin{URL: url, SHA256: valid.SHA256}), "tool", "/url")
 	}
 	assertPinError(t, ValidateRemoteArtifactPin("tool", RemoteArtifactPin{URL: valid.URL, SHA256: "bad"}), "tool", "/sha256")
-}
-func TestValidateLocalPiPackagePinIsLiteral(t *testing.T) {
-	if err := ValidateLocalPiPackagePin("gentle-pi", LocalPiPackagePath); err != nil {
-		t.Fatal(err)
-	}
-	for _, value := range []string{"../../Projects/gentle-pi/", "../gentle-pi", "file:../../Projects/gentle-pi"} {
-		assertPinError(t, ValidateLocalPiPackagePin("gentle-pi", value), "gentle-pi", "/path")
-	}
 }
 func assertPinError(t *testing.T, err error, pin, path string) {
 	t.Helper()

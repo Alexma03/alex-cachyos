@@ -27,8 +27,8 @@ func TestSchemaValidatorAcceptsCatalogBoundaryShapes(t *testing.T) {
 		"templates": ["templates/niri/config.kdl"],
 		"overlays": ["overlays/galaxy"],
 		"checkoutPins": {
-			"gentle-ai": {
-				"remote": "https://example.invalid/gentle-ai.git",
+			"upstream-repo": {
+				"remote": "https://example.invalid/upstream-repo.git",
 				"branch": "main",
 				"commit": "0123456789abcdef"
 			}
@@ -48,8 +48,8 @@ func TestSchemaValidatorAcceptsSourceSpecificPinShapes(t *testing.T) {
 		"catalogVersion": 1,
 		"kind": "Host",
 		"checkoutPins": {
-			"gentle-ai": {
-				"remote": "https://example.invalid/gentle-ai.git",
+			"upstream-repo": {
+				"remote": "https://example.invalid/upstream-repo.git",
 				"branch": "main",
 				"commit": "0123456789abcdef0123456789abcdef01234567"
 			}
@@ -79,7 +79,7 @@ func TestSchemaValidatorAcceptsSourceSpecificPinShapes(t *testing.T) {
 				}
 			},
 			"localPathPackages": {
-				"gentle-pi": "not-a-resolved-path"
+				"local-tool": "not-a-resolved-path"
 			}
 		}
 	}`
@@ -159,8 +159,8 @@ func TestSchemaValidatorRejectsInvalidCatalogWithPaths(t *testing.T) {
 		},
 		{
 			name: "malformed checkout pin",
-			doc:  `{"catalogVersion":1,"kind":"Global","checkoutPins":{"gentle-ai":{"remote":"","branch":"main","commit":"abc"}}}`,
-			path: "/checkoutPins/gentle-ai/remote",
+			doc:  `{"catalogVersion":1,"kind":"Global","checkoutPins":{"upstream-repo":{"remote":"","branch":"main","commit":"abc"}}}`,
+			path: "/checkoutPins/upstream-repo/remote",
 		},
 		{
 			name: "modules wrong type",

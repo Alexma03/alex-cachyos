@@ -132,14 +132,6 @@ func ValidateRemoteArtifactPin(name string, pin RemoteArtifactPin) error {
 	return nil
 }
 
-const LocalPiPackagePath = "../../Projects/gentle-pi"
-
-func ValidateLocalPiPackagePin(name, value string) error {
-	if value != LocalPiPackagePath {
-		return pinError(name, "/path", "local Pi package must be ../../Projects/gentle-pi")
-	}
-	return nil
-}
 
 var semverPattern = regexp.MustCompile(`^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$`)
 

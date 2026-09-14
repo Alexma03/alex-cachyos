@@ -1,6 +1,6 @@
 catalogVersion: 1
 kind: Host
 checkoutPins:
-  gentle-ai:
-    remote: https://example.invalid/gentle-ai.git
+  upstream-repo:
+    remote: https://example.invalid/upstream-repo.git
     branch: main

@@ -18,10 +18,10 @@ func TestNormalizeCanonicalizesMapsAndPreservesListOrder(t *testing.T) {
 		Templates: []string{"templates/second", "templates/first"},
 		Overlays:  []string{"overlays/second", "overlays/first"},
 		CheckoutPins: checkoutPinsInOrder(
-			[]string{"zeta", "gentle-ai"},
+			[]string{"zeta", "alpha"},
 			[]CheckoutPin{
 				{Remote: "https://example.invalid/zeta.git", Branch: "main", Commit: "zeta"},
-				{Remote: "https://example.invalid/gentle-ai.git", Branch: "main", Commit: "gentle-ai"},
+				{Remote: "https://example.invalid/alpha.git", Branch: "main", Commit: "alpha"},
 			},
 		),
 	}
@@ -35,15 +35,15 @@ func TestNormalizeCanonicalizesMapsAndPreservesListOrder(t *testing.T) {
 		Templates: []string{"templates/second", "templates/first"},
 		Overlays:  []string{"overlays/second", "overlays/first"},
 		CheckoutPins: checkoutPinsInOrder(
-			[]string{"gentle-ai", "zeta"},
+			[]string{"alpha", "zeta"},
 			[]CheckoutPin{
-				{Remote: "https://example.invalid/gentle-ai.git", Branch: "main", Commit: "gentle-ai"},
+				{Remote: "https://example.invalid/alpha.git", Branch: "main", Commit: "alpha"},
 				{Remote: "https://example.invalid/zeta.git", Branch: "main", Commit: "zeta"},
 			},
 		),
 	}
 
-	const want = `{"catalogVersion":1,"kind":"Host","modules":{"bootstrap":true,"verify":false},"templates":["templates/second","templates/first"],"overlays":["overlays/second","overlays/first"],"checkoutPins":{"gentle-ai":{"remote":"https://example.invalid/gentle-ai.git","branch":"main","commit":"gentle-ai"},"zeta":{"remote":"https://example.invalid/zeta.git","branch":"main","commit":"zeta"}}}
+	const want = `{"catalogVersion":1,"kind":"Host","modules":{"bootstrap":true,"verify":false},"templates":["templates/second","templates/first"],"overlays":["overlays/second","overlays/first"],"checkoutPins":{"alpha":{"remote":"https://example.invalid/alpha.git","branch":"main","commit":"alpha"},"zeta":{"remote":"https://example.invalid/zeta.git","branch":"main","commit":"zeta"}}}
 `
 	for i := 0; i < 3; i++ {
 		got, err := Normalize(first)
@@ -178,7 +178,7 @@ func TestNormalizeCanonicalizesSourcePins(t *testing.T) {
 				"tool": {URL: "https://downloads.example.invalid/tool.tar.zst", SHA256: remoteSHA},
 			},
 			LocalPathPackages: map[string]string{
-				"gentle-pi": "../../Projects/gentle-pi",
+				"local-tool": "../../Projects/local-tool",
 			},
 		},
 	}
@@ -201,12 +201,12 @@ func TestNormalizeCanonicalizesSourcePins(t *testing.T) {
 				"tool": {URL: "https://downloads.example.invalid/tool.tar.zst", SHA256: remoteSHA},
 			},
 			LocalPathPackages: map[string]string{
-				"gentle-pi": "../../Projects/gentle-pi",
+				"local-tool": "../../Projects/local-tool",
 			},
 		},
 	}
 
-	want := `{"catalogVersion":1,"kind":"Host","pins":{"npm":{"alpha":"npm:alpha@2.0.0","zeta":"npm:zeta@1.0.0"},"pacmanArtifacts":{"one":{"package":"package-one","version":"1.0.0-1","source":"cache","sha256":"` + sha + `"},"two":{"package":"package-two","version":"2.0.0-1","source":"archive","sha256":"` + sha + `"}},"aurLocal":{"driver":{"sourceCommit":"` + commit + `","patchSHA256":"` + patch + `"}},"remoteArtifacts":{"tool":{"url":"https://downloads.example.invalid/tool.tar.zst","sha256":"` + remoteSHA + `"}},"localPathPackages":{"gentle-pi":"../../Projects/gentle-pi"}}}
+	want := `{"catalogVersion":1,"kind":"Host","pins":{"npm":{"alpha":"npm:alpha@2.0.0","zeta":"npm:zeta@1.0.0"},"pacmanArtifacts":{"one":{"package":"package-one","version":"1.0.0-1","source":"cache","sha256":"` + sha + `"},"two":{"package":"package-two","version":"2.0.0-1","source":"archive","sha256":"` + sha + `"}},"aurLocal":{"driver":{"sourceCommit":"` + commit + `","patchSHA256":"` + patch + `"}},"remoteArtifacts":{"tool":{"url":"https://downloads.example.invalid/tool.tar.zst","sha256":"` + remoteSHA + `"}},"localPathPackages":{"local-tool":"../../Projects/local-tool"}}}
 `
 
 	firstBytes, err := Normalize(first)
@@ -278,7 +278,7 @@ func TestDigestChangesForSourcePinContentAndPresence(t *testing.T) {
 func TestNormalizeDoesNotMutateSourcePins(t *testing.T) {
 	pins := &Pins{
 		NPM:               map[string]string{"z": "npm:z@1.0.0", "a": "npm:a@2.0.0"},
-		LocalPathPackages: map[string]string{"gentle-pi": "../../Projects/gentle-pi"},
+		LocalPathPackages: map[string]string{"local-tool": "../../Projects/local-tool"},
 	}
 	catalog := Catalog{CatalogVersion: 1, Kind: KindGlobal, Pins: pins}
 
@@ -289,7 +289,7 @@ func TestNormalizeDoesNotMutateSourcePins(t *testing.T) {
 	if len(pins.NPM) != 2 || pins.NPM["z"] != "npm:z@1.0.0" || pins.NPM["a"] != "npm:a@2.0.0" {
 		t.Fatalf("normalize mutated npm pins: %#v", pins.NPM)
 	}
-	if len(pins.LocalPathPackages) != 1 || pins.LocalPathPackages["gentle-pi"] != "../../Projects/gentle-pi" {
+	if len(pins.LocalPathPackages) != 1 || pins.LocalPathPackages["local-tool"] != "../../Projects/local-tool" {
 		t.Fatalf("normalize mutated local path packages: %#v", pins.LocalPathPackages)
 	}
 }
