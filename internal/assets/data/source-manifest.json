@@ -28,8 +28,8 @@
     },
     {
       "path": "overlays/galaxy/etc/noctalia-greeter/greeter.toml",
-      "size": 532,
-      "sha256": "e7b27dbd593885d66a596c1c0b2ab184466071467fbbe0d15ee4882bf676a23c"
+      "size": 547,
+      "sha256": "b884f351c94eca999baceaf7292ec17afa1caa6949076db27d11b7967f2e96eb"
     },
     {
       "path": "overlays/galaxy/etc/pam.d/alex-cachyos-login",
@@ -133,8 +133,8 @@
     },
     {
       "path": "templates/hosts/galaxy/fixedDisplays/niri/config.kdl",
-      "size": 482,
-      "sha256": "a03a5eb3d43ff2fdbf4c51198114c8793ee85bfde49e51e62623ae70d213caf0"
+      "size": 503,
+      "sha256": "cc775ff3d5f4a454af36337bfbe4f4d908fa40440a68c88e523986912052ddaf"
     },
     {
       "path": "templates/hosts/galaxy/fixedDisplays/noctalia/settings.toml",

@@ -12,6 +12,7 @@ corner_radius_scale = 1.4
 font_family = "MesloLGS Nerd Font"
 
 [output]
+name = "eDP-1"
 layout = "DP-3:0,0; DP-1:2560,0; eDP-1:3320,1440"
 scales = "DP-3:1; DP-1:1; eDP-1:1.5"
 
