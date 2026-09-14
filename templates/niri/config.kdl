@@ -61,6 +61,16 @@ input {
         // middle-emulation
     }
 
+    // Map touchscreen and stylus to laptop built-in screen (eDP-1) so touch
+    // events don't register across all monitors or on external displays.
+    touch {
+        map-to-output "eDP-1"
+    }
+
+    tablet {
+        map-to-output "eDP-1"
+    }
+
     // Leave warp off: Alt+Tab / Super+Tab (recent windows) must not jump the cursor.
     // warp-mouse-to-focus
 
