@@ -1,5 +1,5 @@
 #%PAM-1.0
-auth      sufficient pam_fprintd.so timeout=-1 max-tries=3
+auth      sufficient pam_fprintd.so timeout=10 max-tries=3
 auth      include    system-auth
 account   include    system-auth
 password  include    system-auth

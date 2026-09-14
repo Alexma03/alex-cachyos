@@ -17,9 +17,24 @@
       "sha256": "841b71117cf688b465d926b80aef29f63a721251a7a9bf84f3532a17597b7cc1"
     },
     {
+      "path": "overlays/galaxy/etc/greetd/config.toml",
+      "size": 220,
+      "sha256": "c1e0897a9f92088b1fedff84afef2bb82643a0e7a6a332c94fc10a35d6cb12b5"
+    },
+    {
       "path": "overlays/galaxy/etc/greetd/cosmic-greeter.toml",
       "size": 258,
       "sha256": "d8b6d879c3c9fb6c8ae4ccb0a60b27796e722a941ac9bcc86227ac1f8ed118c2"
+    },
+    {
+      "path": "overlays/galaxy/etc/noctalia-greeter/greeter.toml",
+      "size": 532,
+      "sha256": "e7b27dbd593885d66a596c1c0b2ab184466071467fbbe0d15ee4882bf676a23c"
+    },
+    {
+      "path": "overlays/galaxy/etc/pam.d/alex-cachyos-login",
+      "size": 308,
+      "sha256": "46210cdd3fdec1997715a9d613ee11700b051e6fff94d9fad2a33d2cc4a3d35c"
     },
     {
       "path": "overlays/galaxy/etc/pam.d/cosmic-greeter",
@@ -34,7 +49,7 @@
     {
       "path": "overlays/galaxy/etc/pam.d/polkit-1",
       "size": 201,
-      "sha256": "d3dda6b4532a13ff956063fa87c8b5180a31daf27eaa7ae91b29a15a2ca3844e"
+      "sha256": "07c445c754211eaadafc3df5b5e7eb6e1d405d5ff1691b2f17d4804c6c66646d"
     },
     {
       "path": "overlays/galaxy/etc/pam.d/su",
@@ -49,7 +64,7 @@
     {
       "path": "overlays/galaxy/etc/pam.d/sudo",
       "size": 214,
-      "sha256": "90761aac0a0e09d09a0892ab1d3ca415a0a4efbadf4981f75c46eb1376337089"
+      "sha256": "159ac2bfc18f7c48aac97caa8b575cfc76933de7e3e01593103a959e52f7c167"
     },
     {
       "path": "overlays/galaxy/etc/pam.d/system-local-login",
@@ -73,13 +88,13 @@
     },
     {
       "path": "templates/apps/packages.aur",
-      "size": 176,
-      "sha256": "4ff8c9d5fa3307500b450bdd70533db5aa7fbd1007abfd30f08fb1a137a1438d"
+      "size": 247,
+      "sha256": "cb13a466ca2ff7a39aa314cfe2aabd4c73441db3a66f7793290d5976acc06188"
     },
     {
       "path": "templates/apps/packages.pacman",
-      "size": 91,
-      "sha256": "20e4167341deecddb391810e04da721569d0b84b593dae2034e8778c0c0869f1"
+      "size": 194,
+      "sha256": "af24538b9a157a025212069554bb60010626d927aecd0f92eefbb853d289f8d5"
     },
     {
       "path": "templates/apps/webapps.list",
@@ -88,23 +103,23 @@
     },
     {
       "path": "templates/bootstrap/packages.remove",
-      "size": 1070,
-      "sha256": "224588b08979c011e255142721d87f94733fbda91d035a81add1e988f803c111"
+      "size": 1045,
+      "sha256": "9af57d5c550be7cb022b7d1c46ed49df1a8ec2aa175a1332b2413e00166f3b7b"
     },
     {
       "path": "templates/bootstrap/packages.want",
-      "size": 147,
-      "sha256": "d85d5e7e3e0ffe9fa33b0d2ce00b1440bceebe9a82bbac1502830490cd255326"
+      "size": 182,
+      "sha256": "61c0e1931cdd7d2ac7fac8a3e64c289c1723e7720df0cfa10e13cc927d45c12e"
     },
     {
       "path": "templates/desktop/packages.pacman",
-      "size": 300,
-      "sha256": "a41741b98e554fe7f7e45e31c51e9aa865d6853ae6725a2a5b977597131d4175"
+      "size": 353,
+      "sha256": "965c8361a06afcf668f62ba05b5085311f167d82740164a8ac6ebe80cba59aaa"
     },
     {
       "path": "templates/devtools/mise.config.toml",
-      "size": 218,
-      "sha256": "e32f50cc83c015c3dfd11850222150d298f67fa6c4fad319a909800403af2c43"
+      "size": 389,
+      "sha256": "c80fe1afffa718c0779716ded85e93c4f37ce8d0bd0c3e80f22ec0de15d6fde5"
     },
     {
       "path": "templates/devtools/npmrc",
@@ -113,8 +128,8 @@
     },
     {
       "path": "templates/devtools/pnpm.config.yaml",
-      "size": 977,
-      "sha256": "fb84d0e4d1b06efd7c42d4ea8c7488c15b0de4d82bab133e7af525712e52ae6c"
+      "size": 1041,
+      "sha256": "222fc702fc2214210e79d23311cbe58ad9fcd761ba9bee824207371ec275f2f6"
     },
     {
       "path": "templates/hosts/galaxy/fixedDisplays/niri/config.kdl",
@@ -148,8 +163,8 @@
     },
     {
       "path": "templates/quickshell-polkit/shell.qml",
-      "size": 9504,
-      "sha256": "f47d64af6773679a9347f6cc2d81cb677fd077c1b2cf716a5dda4a504a50ac55"
+      "size": 9490,
+      "sha256": "41392b15242f3f169fc611d6ad6a5816dbfb33664ab341db7a2006244d34177f"
     },
     {
       "path": "templates/roles/workstation/hyprwhspr/config.json",
@@ -158,8 +173,8 @@
     },
     {
       "path": "templates/roles/workstation/niri/config.kdl",
-      "size": 25298,
-      "sha256": "ad74725e0c93a2e40e6715935d2698dba98289f973de70dd28a561fcf3053c86"
+      "size": 25389,
+      "sha256": "40fd42c08665d2306bf17f0b107be309f7a5da89a17560341b31774ccc277867"
     },
     {
       "path": "templates/roles/workstation/noctalia/settings.toml",

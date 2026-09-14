@@ -38,7 +38,7 @@
   "overlays": [
     "overlays/galaxy"
   ],
-  "planDigest": "c4c4873274bc5b85cba41d0327c90f8b50452e64dd330ab461c32947dcbf4158",
+  "planDigest": "af33b28f37ea96669e653efae9c00d581d0d250298eb7a9f03cb36a00ff9c373",
   "stepOrder": [
     "bootstrap.boot.grub-edit",
     "bootstrap.boot.grub-generate",

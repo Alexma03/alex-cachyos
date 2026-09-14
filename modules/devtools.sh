@@ -49,11 +49,16 @@ _devtools_install() {
   ao_log "devtools: mise install (node/npm/pnpm)"
   # Ensure shims resolve even if this shell never activated mise.
   export PATH="${home}/.local/share/mise/shims:${PATH}"
+  export PNPM_CONFIG_GLOBAL_BIN_DIR="${home}/.local/bin"
   eval "$(mise activate bash)"
   mise install
   if command -v corepack >/dev/null 2>&1; then
     corepack disable 2>/dev/null || true
   fi
+  [[ $(pnpm --version) == 12.* ]] \
+    || ao_die "devtools: expected pnpm 12.x after mise install"
+  [[ $(pnpm bin -g) == "$home/.local/bin" ]] \
+    || ao_die "devtools: pnpm global bin is not $home/.local/bin"
 
   ao_log "devtools: done — open a new shell, then: node -v && pnpm -v && npm -v"
   ao_log "devtools: docs: docs/devtools.md"
@@ -79,6 +84,7 @@ END = "# <<< alex-cachyos/devtools <<<"
 
 blocks = {
     home / ".zshrc": '''eval "$(mise activate zsh)"
+export PNPM_CONFIG_GLOBAL_BIN_DIR="$HOME/.local/bin"
 # After mise: global CLIs; mise keeps winning for node/pnpm
 case ":$PATH:" in
   *":$HOME/.local/bin:"*) ;;
@@ -86,6 +92,7 @@ case ":$PATH:" in
 esac
 ''',
     home / ".bashrc": '''eval "$(mise activate bash)"
+export PNPM_CONFIG_GLOBAL_BIN_DIR="$HOME/.local/bin"
 # After mise: global CLIs; mise keeps winning for node/pnpm
 case ":$PATH:" in
   *":$HOME/.local/bin:"*) ;;
@@ -93,6 +100,7 @@ case ":$PATH:" in
 esac
 ''',
     home / ".config/fish/config.fish": '''mise activate fish | source
+set -gx PNPM_CONFIG_GLOBAL_BIN_DIR "$HOME/.local/bin"
 # After mise: global CLIs (pnpm add -g → here), mise keeps winning for node/pnpm
 fish_add_path --append --path "$HOME/.local/bin"
 ''',
@@ -102,6 +110,8 @@ fish_add_path --append --path "$HOME/.local/bin"
 LOOSE = re.compile(
     r"^(?:mise activate fish \| source|"
     r'eval "\$\(mise activate (?:zsh|bash)\)"|'
+    r'export PNPM_CONFIG_GLOBAL_BIN_DIR="\$HOME/\.local/bin"|'
+    r'set -gx PNPM_CONFIG_GLOBAL_BIN_DIR "\$HOME/\.local/bin"|'
     r"# After mise:.*|"
     r'fish_add_path --append --path "\$HOME/\.local/bin"|'
     r"case \":\$PATH:\" in|"

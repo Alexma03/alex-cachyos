@@ -1,5 +1,5 @@
 # AUR via paru (docker-desktop provides compose/buildx — do not pacman those separately)
-warp-terminal-bin
+# warp-terminal now comes from the official warpdotdev pacman repo (see packages.pacman)
 slack-desktop
 docker-desktop
 hyprwhspr

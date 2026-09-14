@@ -33,9 +33,9 @@ func TestBootstrapRequestsUseEmbeddedListsAndExactDeltas(t *testing.T) {
 		op   string
 		want []string
 	}{
-		{"bootstrap.packages.install", []string{"-Syu", "--needed", "--noconfirm", "cosmic-store", "flatpak", "nano"}},
+		{"bootstrap.packages.install", []string{"-Syu", "--needed", "--noconfirm", "cachyos-packageinstaller", "flatpak", "nano", "ufw", "ufw-extras"}},
 		{"bootstrap.packages.remove", []string{"-Rns", "--noconfirm", "cachyos-zsh-config", "firefox", "firefox-i18n-de", "vim"}},
-		{"bootstrap.packages.explicit", []string{"-D", "--asexplicit", "cosmic-store", "flatpak", "nano", "paru"}},
+		{"bootstrap.packages.explicit", []string{"-D", "--asexplicit", "cachyos-packageinstaller", "flatpak", "nano", "paru", "ufw", "ufw-extras"}},
 		{"bootstrap.service.ananicy-cpp", []string{"enable", "--now", "ananicy-cpp.service"}},
 	} {
 		if got := request(t, p, tc.op).Argv; !reflect.DeepEqual(got, tc.want) {

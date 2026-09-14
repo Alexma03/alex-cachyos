@@ -5,3 +5,8 @@ discord
 localsend
 tailscale
 docker
+github-cli
+rust
+shelly
+# Official warpdotdev repo (supersedes the AUR warp-terminal-bin)
+warp-terminal

@@ -3,6 +3,9 @@
 # Development node/npm/pnpm come from mise (shims win over /usr/bin).
 
 [tools]
+go = "1.27.0"
 node = "lts"
 npm = "latest"
-pnpm = "latest"
+# pnpm 12 is still published under next-12 rather than npm's generic latest.
+# Track the supported major so apply receives 12.x fixes without jumping to 13.
+pnpm = "11.1.1"

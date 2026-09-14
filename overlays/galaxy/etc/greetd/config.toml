@@ -1,0 +1,10 @@
+[terminal]
+vt = 1
+
+[general]
+# Dedicated PAM service keeps fingerprint login out of Noctalia's lock stack.
+service = "alex-cachyos-login"
+
+[default_session]
+command = "/usr/bin/noctalia-greeter-session"
+user = "greeter"

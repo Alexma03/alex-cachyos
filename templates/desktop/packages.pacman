@@ -1,10 +1,17 @@
-# Wayland compositor + shell. Do not pull cachyos-niri-noctalia
-# (xdg-desktop-portal-gnome / nautilus, Conflicts with desktop settings).
-# Polkit UI: Quickshell agent (Omarchy-style), not Noctalia's built-in panel.
+# Niri-only Wayland desktop. Keep these explicit so a fresh CachyOS install
+# gets every runtime integration that Niri and Noctalia need.
 niri
 noctalia
 noctalia-greeter
-greetd
-accountsservice
 xwayland-satellite
 quickshell
+xdg-desktop-portal-gnome
+xdg-desktop-portal-gtk
+gnome-keyring
+accountsservice
+nautilus
+foot
+power-profiles-daemon
+playerctl
+python-gobject
+ttf-meslo-nerd

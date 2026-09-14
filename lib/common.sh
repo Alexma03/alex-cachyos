@@ -7,6 +7,30 @@ ao_die()  { printf 'error: %s\n' "$*" >&2; exit 1; }
 
 ao_has_cmd() { command -v "$1" >/dev/null 2>&1; }
 
+# Packages named by this repository are intentional system state, even when
+# they were originally pulled in as dependencies by a desktop meta-package.
+# Marking them explicit prevents a later `pacman -Rns` cleanup from pruning a
+# declared application or runtime integration.
+ao_pacman_mark_explicit_files() {
+  local file pkg
+  local -a declared installed
+
+  ao_need_root
+  for file in "$@"; do
+    [[ -f $file ]] || ao_die "missing package declaration: $file"
+    while IFS= read -r pkg; do
+      [[ -n $pkg ]] && declared+=("$pkg")
+    done < <(grep -vE '^\s*(#|$)' "$file" | awk '{print $1}')
+  done
+
+  mapfile -t declared < <(printf '%s\n' "${declared[@]}" | sort -u)
+  installed=()
+  for pkg in "${declared[@]}"; do
+    pacman -Q "$pkg" &>/dev/null && installed+=("$pkg")
+  done
+  ((${#installed[@]})) && pacman -D --asexplicit "${installed[@]}" >/dev/null
+}
+
 ao_need_root() {
   if [[ ${EUID:-$(id -u)} -ne 0 ]]; then
     ao_die "this step needs root (re-run with sudo/pkexec, or from apply which elevates)"

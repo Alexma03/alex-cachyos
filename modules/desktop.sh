@@ -1,23 +1,22 @@
 #!/usr/bin/env bash
-# Module: desktop — Niri + Noctalia as the default session.
-# Login greeter stays cosmic-greeter; COSMIC desktop is optional in the session list only.
-# pkexec UI: Quickshell Omarchy-style agent only (templates/quickshell-polkit).
+# Module: desktop — Niri + Noctalia, Noctalia Greeter and Niri-native portals.
 
 module_desktop() {
   local tpl="$AO_ROOT/templates"
+  local overlay="$AO_ROOT/overlays/${AO_OVERLAY_PROFILE:-galaxy}/etc"
   local remove=${AO_REMOVE:-0}
 
   ao_log "desktop: $([[ $remove -eq 1 ]] && echo remove || echo install)"
 
   if [[ $AO_DRY_RUN -eq 1 ]]; then
-    ao_log "DRY: would $([[ $remove -eq 1 ]] && echo remove || echo install) niri + noctalia + default session"
+    ao_log "DRY: would $([[ $remove -eq 1 ]] && echo remove || echo install) the Niri-only desktop"
     return 0
   fi
 
   if [[ $remove -eq 1 ]]; then
     _desktop_remove
   else
-    _desktop_install "$tpl"
+    _desktop_install "$tpl" "$overlay"
   fi
 }
 
@@ -27,10 +26,43 @@ _desktop_read_list() {
   grep -vE '^\s*(#|$)' "$file" | sed 's/[[:space:]]*$//'
 }
 
+_desktop_legacy_packages() {
+  cat <<'EOF'
+cosmic-applets
+cosmic-app-library
+cosmic-bg
+cosmic-comp
+cosmic-files
+cosmic-greeter
+cosmic-icon-theme
+cosmic-idle
+cosmic-launcher
+cosmic-monitor
+cosmic-notifications
+cosmic-osd
+cosmic-panel
+cosmic-player
+cosmic-randr
+cosmic-screenshot
+cosmic-session
+cosmic-settings
+cosmic-settings-daemon
+cosmic-sound-theme
+cosmic-store
+cosmic-terminal
+cosmic-text-editor
+cosmic-wallpapers
+cosmic-workspaces
+pop-icon-theme
+pop-launcher
+xdg-desktop-portal-cosmic
+EOF
+}
+
 _desktop_install() {
-  local tpl=$1
+  local tpl=$1 overlay=$2
   local home=${HOME:?}
-  local user work pac_file
+  local user work pac_file noctalia_tmp
   local -a pac missing
 
   ao_has_cmd pkexec || ao_die "pkexec required (polkit)"
@@ -47,115 +79,126 @@ _desktop_install() {
   ((${#missing[@]})) && printf '%s\n' "${missing[@]}" >"$pac_file"
   user=$(id -un)
 
-  # Only the Quickshell polkit UI — kill competing agents first.
+  # Keep the working graphical agent alive while package installation prompts.
   _desktop_stop_other_polkit_agents
-  _desktop_ensure_quickshell_polkit || ao_warn "desktop: no polkit agent yet — first package install needs sudo/pkexec in a real terminal (huella ahí)"
+  _desktop_ensure_quickshell_polkit || ao_warn "desktop: graphical polkit agent is not running"
 
   if ((${#missing[@]})); then
-    ao_log "desktop: niri/noctalia packages (pkexec — huella)"
+    ao_log "desktop: installing the complete Niri runtime (pkexec — huella)"
     ao_root bash -c "
       set -euo pipefail
-      source '$AO_ROOT/lib/common.sh'
       mapfile -t want < <(grep -vE '^\\s*\$' '$pac_file' || true)
-      ao_log \"desktop: pacman -S \${want[*]}\"
       pacman -S --needed --noconfirm \"\${want[@]}\"
     "
   else
-    ao_log "desktop: niri/noctalia already present"
+    ao_log "desktop: Niri runtime packages already present"
   fi
-  rm -rf "$work"
 
   ao_install_user_file "$tpl/niri/config.kdl" "$home/.config/niri/config.kdl"
-  mkdir -p "$home/.local/state/noctalia"
-  ao_install_user_file "$tpl/noctalia/settings.toml" "$home/.local/state/noctalia/settings.toml"
-  mkdir -p "$home/.config/hyprwhspr"
+
+  noctalia_tmp=$work/noctalia-config.toml
+  sed "s|@HOME@|$home|g" "$tpl/noctalia/config.toml" >"$noctalia_tmp"
+  ao_install_user_file "$noctalia_tmp" "$home/.config/noctalia/config.toml"
+  # settings.toml is Noctalia-owned mutable state and overrides declarative config.
+  # Removing it makes every apply converge to templates/noctalia/config.toml.
+  rm -f "$home/.local/state/noctalia/settings.toml" \
+        "$home/.local/state/noctalia/settings.toml.bak.alex-cachyos"
+
   ao_install_user_file "$tpl/hyprwhspr/config.json" "$home/.config/hyprwhspr/config.json"
-  mkdir -p "$home/.config/quickshell/polkit"
   ao_install_user_file "$tpl/quickshell-polkit/shell.qml" "$home/.config/quickshell/polkit/shell.qml"
   ao_install_user_file "$tpl/quickshell-polkit/PolkitModel.js" "$home/.config/quickshell/polkit/PolkitModel.js"
 
   printf '%s\n' '[Desktop]' 'Session=niri' >"$home/.dmrc"
-  ao_log "desktop: ~/.dmrc Session=niri"
 
-  ao_log "desktop: default session in greeter (pkexec — huella)"
-  if ! ao_root bash -c "
+  ao_log "desktop: configuring greetd and removing the old desktop stack (pkexec — huella)"
+  ao_root bash -c "
     set -euo pipefail
     source '$AO_ROOT/lib/common.sh'
     source '$AO_ROOT/modules/desktop.sh'
-    _desktop_root_default_session '$user'
-  "; then
-    ao_warn "desktop: greeter last_session not written (pkexec failed); ~/.dmrc is niri"
+    _desktop_root_configure '$user' '$overlay' '$AO_ROOT'
+  "
+
+  # User-owned remnants from prior desktop experiments are not inputs to Niri.
+  rm -rf "$home/.cache/cosmic-settings" \
+         "$home/.cache/cosmic-store" \
+         "$home/.config/cosmic" \
+         "$home/.config/dconf/cosmic" \
+         "$home/.config/hypr" \
+         "$home/.config/hyprpolkitagent" \
+         "$home/.local/state/cosmic" \
+         "$home/.local/state/cosmic-comp"
+  rm -f "$home/.local/state/pop-launcher/cosmic-toplevel.log"
+  if ao_has_cmd flatpak && flatpak remotes --user --columns=name 2>/dev/null | grep -Fxq cosmic; then
+    flatpak remote-delete --user --force cosmic
+  fi
+  rm -rf "$home/.local/share/flatpak/appstream/cosmic" \
+         "$home/.local/share/flatpak/repo/refs/remotes/cosmic"
+  rm -f "$home/.local/share/flatpak/repo/cosmic.trustedkeys.gpg"
+  if [[ -d $home/.local/share/flatpak/repo/tmp/cache/summaries ]]; then
+    find "$home/.local/share/flatpak/repo/tmp/cache/summaries" -maxdepth 1 \
+      -type f -name 'cosmic*' -delete
   fi
 
-  if command -v niri >/dev/null && [[ -f $home/.config/niri/config.kdl ]]; then
-    niri validate --config "$home/.config/niri/config.kdl" >/dev/null
-  fi
+  niri validate --config "$home/.config/niri/config.kdl"
+  noctalia config validate "$home/.config/noctalia/config.toml"
 
   if pacman -Q hyprwhspr &>/dev/null; then
-    ao_log "desktop: hyprwhspr noctalia plugin + user service"
+    ao_log "desktop: installing noctwhspr plugin + user service"
     hyprwhspr noctalia install
     systemctl --user enable --now hyprwhspr.service
   else
-    ao_warn "desktop: hyprwhspr not installed — run apps module for local STT + noctwhspr"
+    ao_warn "desktop: hyprwhspr missing — run the apps module"
   fi
 
-  _desktop_ensure_quickshell_polkit || true
+  systemctl --user enable --now vicinae.service 2>/dev/null || true
+  _desktop_ensure_quickshell_polkit || ao_die "desktop: Quickshell polkit agent failed to start"
 
-  if command -v noctalia >/dev/null; then
-    if noctalia msg status &>/dev/null; then
-      noctalia msg plugins enable goodroot/noctwhspr >/dev/null || true
-      noctalia msg plugins enable felipeartur/ai-usagebar >/dev/null || true
-      noctalia msg config-reload >/dev/null || true
-    else
-      ao_log "desktop: noctalia not running — plugins enable on next niri login from settings.toml"
-    fi
-  fi
-
-  ao_log "desktop: done — Niri is the default session; COSMIC remains only as a greeter option"
-  ao_log "desktop: docs: docs/desktop.md"
-}
-
-# Kill every graphical polkit agent that is not our Quickshell UI.
-_desktop_stop_other_polkit_agents() {
-  systemctl --user disable --now hyprpolkitagent.service 2>/dev/null || true
-  pkill -f 'polkit-kde-authentication-agent-1' 2>/dev/null || true
-  pkill -f 'polkit-gnome-authentication-agent-1' 2>/dev/null || true
-  pkill -x hyprpolkitagent 2>/dev/null || true
-  pkill -f 'lxqt-policykit-agent' 2>/dev/null || true
-}
-
-# Install/reload Omarchy-style Quickshell polkit; keep Noctalia's agent off.
-_desktop_ensure_quickshell_polkit() {
-  _desktop_stop_other_polkit_agents
-  if ! command -v qs >/dev/null && ! command -v quickshell >/dev/null; then
-    return 1
-  fi
-  # settings.toml template has polkit_agent = false; reload if shell is up.
-  if command -v noctalia >/dev/null && noctalia msg status &>/dev/null; then
-    noctalia msg config-reload >/dev/null || true
-  fi
-  pkill -f 'qs -c polkit' 2>/dev/null || true
-  sleep 0.2
-  if command -v qs >/dev/null; then
-    ao_log "desktop: starting Quickshell polkit agent (qs -c polkit)"
-    qs -c polkit -n -d || return 1
+  if noctalia msg status &>/dev/null; then
+    noctalia msg plugins enable goodroot/noctwhspr
+    noctalia msg plugins enable felipeartur/ai-usagebar
+    noctalia msg config-reload
   else
-    ao_log "desktop: starting Quickshell polkit agent"
-    quickshell -c polkit -n -d || return 1
+    ao_log "desktop: Noctalia will load the declarative config at next Niri login"
   fi
-  sleep 0.3
-  return 0
+
+  # Re-select portal implementations after replacing the old backend.
+  systemctl --user restart xdg-desktop-portal.service 2>/dev/null || true
+
+  rm -rf "$work"
+
+  ao_log "desktop: done — Niri is the only installed graphical session"
+  ao_log "desktop: reboot once to switch the running greeter process to Noctalia Greeter"
 }
 
-# Runs as root (inside ao_root). Prefer Niri in AccountsService + cosmic-greeter last_session.
-_desktop_root_default_session() {
-  local user=$1
-  local uid as gdir users_file
-  uid=$(id -u "$user")
+_desktop_root_configure() {
+  local user=$1 overlay=$2 repo=$3
+  local as state_dir
+  local -a legacy installed
+
+  [[ -x /usr/bin/noctalia-greeter-session ]] || ao_die "noctalia-greeter-session missing"
+  getent passwd greeter >/dev/null || ao_die "greetd greeter user missing"
+
+  _desktop_restore_legacy_pam
+
+  # Protect every package declared by the repository before pruning the old
+  # desktop's dependency tree.
+  ao_pacman_mark_explicit_files \
+    "$repo/templates/bootstrap/packages.want" \
+    "$repo/templates/apps/packages.pacman" \
+    "$repo/templates/apps/packages.aur" \
+    "$repo/templates/desktop/packages.pacman"
+
+  ao_install_file "$overlay/greetd/config.toml" /etc/greetd/config.toml
+  ao_install_file "$overlay/pam.d/alex-cachyos-login" /etc/pam.d/alex-cachyos-login
+
+  state_dir=/var/lib/noctalia-greeter
+  install -d -m 0750 -o greeter -g greeter "$state_dir"
+  install -m 0644 -o greeter -g greeter \
+    "$overlay/noctalia-greeter/greeter.toml" "$state_dir/greeter.toml"
+
   as=/var/lib/AccountsService/users/$user
-  mkdir -p /var/lib/AccountsService/users
+  install -d -m 0755 /var/lib/AccountsService/users
   if [[ -f $as ]]; then
-    grep -q '^\[User\]' "$as" || sed -i '1i[User]' "$as"
     if grep -q '^Session=' "$as"; then
       sed -i 's/^Session=.*/Session=niri/' "$as"
     else
@@ -169,39 +212,123 @@ _desktop_root_default_session() {
   else
     printf '%s\n' '[User]' 'Session=niri' 'XSession=niri' 'SystemAccount=false' >"$as"
   fi
-  ao_log "desktop: AccountsService Session=niri for $user"
 
-  gdir=/var/lib/cosmic-greeter/.config/cosmic/com.system76.CosmicGreeter/v1
-  if [[ -d /var/lib/cosmic-greeter ]]; then
-    mkdir -p "$gdir"
-    users_file=$gdir/users
-    if [[ -f $users_file && ! -f ${users_file}.bak.alex-cachyos ]]; then
-      cp -a "$users_file" "${users_file}.bak.alex-cachyos"
-    fi
-    # Name= from niri.desktop (cosmic-greeter last_session uses the display Name).
-    cat >"$users_file" <<EOF
-{
-    $uid: (
-        uid: $uid,
-        last_session: Some("Niri"),
-    ),
-}
-EOF
-    printf 'Some(%s)\n' "$uid" >"$gdir/last_user"
-    chown -R cosmic-greeter:cosmic-greeter /var/lib/cosmic-greeter/.config 2>/dev/null || true
-    ao_log "desktop: cosmic-greeter last_session=Niri"
+  # Change the boot-time alias without stopping the greeter that owns this login.
+  systemctl disable cosmic-greeter.service 2>/dev/null || true
+  systemctl enable --force greetd.service
+
+  mapfile -t legacy < <(_desktop_legacy_packages)
+  installed=()
+  for p in "${legacy[@]}"; do
+    pacman -Q "$p" &>/dev/null && installed+=("$p")
+  done
+  if ((${#installed[@]})); then
+    pacman -Rns --noconfirm "${installed[@]}"
   fi
+
+  if command -v flatpak >/dev/null 2>&1 \
+     && flatpak remotes --system --columns=name 2>/dev/null | grep -Fxq cosmic; then
+    flatpak remote-delete --system --force cosmic
+  fi
+  rm -rf /var/lib/flatpak/appstream/cosmic \
+         /var/lib/flatpak/repo/refs/remotes/cosmic
+  rm -f /var/lib/flatpak/repo/cosmic.trustedkeys.gpg
+  if [[ -d /var/lib/flatpak/repo/tmp/cache/summaries ]]; then
+    find /var/lib/flatpak/repo/tmp/cache/summaries -maxdepth 1 \
+      -type f -name 'cosmic*' -delete
+  fi
+
+  rm -f /etc/environment.d/99-vicinae-cosmic.conf \
+        /etc/greetd/cosmic-greeter.toml \
+        /etc/greetd/cosmic-greeter.toml.bak.alex-cachyos \
+        /etc/pam.d/cosmic-greeter \
+        /etc/pam.d/cosmic-greeter.bak.alex-cachyos
+  if getent passwd cosmic-greeter >/dev/null && ! pgrep -u cosmic-greeter >/dev/null; then
+    userdel -r cosmic-greeter 2>/dev/null || true
+  fi
+  rm -rf /var/lib/cosmic-greeter
+
+  # Cached archives are not rollback state (Snapper holds that) and would be
+  # the last machine-local copies of the removed desktop stack.
+  find /var/cache/pacman/pkg -maxdepth 1 -type f \
+    \( -name 'cosmic-*.pkg.tar.*' -o -name 'xdg-desktop-portal-cosmic-*.pkg.tar.*' \) \
+    -delete
+  systemctl daemon-reload
+
+  [[ $(readlink -f /etc/systemd/system/display-manager.service) == /usr/lib/systemd/system/greetd.service ]] \
+    || ao_die "display-manager.service does not point to greetd"
+}
+
+# Previous versions replaced package-owned PAM files wholesale. Restore their
+# current package versions before installing the dedicated login PAM service.
+_desktop_restore_legacy_pam() {
+  local work pkg member dst archive spec
+  local -a specs=(
+    'greetd:etc/pam.d/greetd:/etc/pam.d/greetd'
+    'pambase:etc/pam.d/system-local-login:/etc/pam.d/system-local-login'
+    'util-linux:etc/pam.d/su:/etc/pam.d/su'
+    'util-linux:etc/pam.d/su-l:/etc/pam.d/su-l'
+  )
+
+  [[ -e /etc/pam.d/greetd.bak.alex-cachyos \
+     || -e /etc/pam.d/system-local-login.bak.alex-cachyos \
+     || -e /etc/pam.d/su.bak.alex-cachyos \
+     || -e /etc/pam.d/su-l.bak.alex-cachyos ]] || return 0
+
+  work=$(mktemp -d /tmp/alex-cachyos-pam.XXXXXX)
+  # pacman drops privileges to DownloadUser=alpm for network transfers.  The
+  # staged files live in an alpm-owned child, but that user must be able to
+  # traverse the mktemp parent (created as 0700 by default).
+  chmod 0755 "$work"
+  for spec in "${specs[@]}"; do
+    IFS=: read -r pkg member dst <<<"$spec"
+    pacman -Sw --noconfirm --cachedir "$work" "$pkg" >/dev/null
+    archive=$(find "$work" -maxdepth 1 -type f \
+      -name "$pkg-*.pkg.tar.*" ! -name '*.sig' -print -quit)
+    [[ -n $archive ]] || ao_die "could not stage $pkg to restore $dst"
+    bsdtar -tf "$archive" | grep -Fxq "$member" \
+      || ao_die "$archive does not contain $member"
+    bsdtar -xOf "$archive" "$member" | install -D -m 0644 /dev/stdin "$dst"
+  done
+  rm -rf "$work"
+  rm -f /etc/pam.d/greetd.bak.alex-cachyos \
+        /etc/pam.d/system-local-login.bak.alex-cachyos \
+        /etc/pam.d/su.bak.alex-cachyos \
+        /etc/pam.d/su-l.bak.alex-cachyos
+}
+
+# Keep one graphical authentication agent: the small Quickshell UI in this repo.
+_desktop_stop_other_polkit_agents() {
+  systemctl --user disable --now hyprpolkitagent.service 2>/dev/null || true
+  pkill -f 'polkit-kde-authentication-agent-1' 2>/dev/null || true
+  pkill -f 'polkit-gnome-authentication-agent-1' 2>/dev/null || true
+  pkill -x hyprpolkitagent 2>/dev/null || true
+  pkill -f 'lxqt-policykit-agent' 2>/dev/null || true
+}
+
+_desktop_ensure_quickshell_polkit() {
+  _desktop_stop_other_polkit_agents
+  if ! command -v qs >/dev/null && ! command -v quickshell >/dev/null; then
+    return 1
+  fi
+  pkill -f 'qs -c polkit' 2>/dev/null || true
+  sleep 0.2
+  if command -v qs >/dev/null; then
+    qs -c polkit -n -d || return 1
+  else
+    quickshell -c polkit -n -d || return 1
+  fi
+  sleep 0.3
 }
 
 _desktop_remove() {
   local home=${HOME:?}
   ao_restore_user_file "$home/.config/niri/config.kdl"
-  ao_restore_user_file "$home/.local/state/noctalia/settings.toml"
+  ao_restore_user_file "$home/.config/noctalia/config.toml"
   ao_restore_user_file "$home/.config/hyprwhspr/config.json"
   ao_restore_user_file "$home/.config/quickshell/polkit/shell.qml"
   ao_restore_user_file "$home/.config/quickshell/polkit/PolkitModel.js"
   pkill -f 'qs -c polkit' 2>/dev/null || true
-  rm -f "$home/.dmrc"
   systemctl --user disable --now hyprwhspr.service 2>/dev/null || true
-  ao_warn "desktop --remove restores config backups; leaves niri/noctalia packages and greeter last_session"
+  ao_warn "desktop --remove restores user configs; it keeps the safe Niri boot path installed"
 }

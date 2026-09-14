@@ -68,7 +68,27 @@ input {
     focus-follows-mouse max-scroll-amount="0%"
 }
 
-// Output configuration is host-owned and intentionally omitted here.
+// Layout (logical px, scale already applied):
+//   [Gigabyte 2560x1440] [Huawei 3440x1440]
+//                        [ laptop 1920x1200 centered under Huawei ]
+output "DP-3" {
+    // Native 2560x1440; omit Hz so niri picks the highest (144). EDID "preferred" is 60.
+    mode "2560x1440"
+    scale 1
+    position x=0 y=0
+}
+
+output "DP-1" {
+    mode "3440x1440"
+    scale 1
+    position x=2560 y=0
+}
+
+output "eDP-1" {
+    mode "2880x1800"
+    scale 1.5
+    position x=3320 y=1440
+}
 
 // Settings that influence how windows are positioned and sized.
 // Find more information on the wiki:

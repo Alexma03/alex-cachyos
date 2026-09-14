@@ -1,0 +1,25 @@
+# Declarative Noctalia Greeter config. Mutable UI state lives in sync.toml.
+[session]
+default = "Niri"
+
+[user]
+default = "alex"
+
+[appearance]
+scheme = "Catppuccin"
+theme_mode = "dark"
+corner_radius_scale = 1.4
+font_family = "MesloLGS Nerd Font"
+
+[output]
+layout = "DP-3:0,0; DP-1:2560,0; eDP-1:3320,1440"
+scales = "DP-3:1; DP-1:1; eDP-1:1.5"
+
+[keyboard]
+layout = "es"
+options = "terminate:ctrl_alt_bksp"
+numlock = true
+
+[auth]
+# Allows an empty submit so PAM/fprintd can authenticate without a password.
+allow_empty_password = true

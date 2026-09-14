@@ -35,7 +35,7 @@ func TestBuildModulesWiresEnabledReproducibleFactoriesFromResolvedPolicy(t *test
 		HomeRoot: t.TempDir(),
 		UserName: "alex",
 		AURPins: map[string]catalog.AURLocalPin{
-			"warp-terminal-bin": {SourceCommit: strings.Repeat("0", 40), PatchSHA256: strings.Repeat("f", 64)},
+			"slack-desktop": {SourceCommit: strings.Repeat("0", 40), PatchSHA256: strings.Repeat("f", 64)},
 		},
 	}
 	evidence.AppsIconFetcher = embeddedAppsIconFetcher(t)
@@ -64,16 +64,16 @@ func TestBuildModulesWiresEnabledReproducibleFactoriesFromResolvedPolicy(t *test
 		step   string
 	}{
 		{DevtoolsModuleName, "devtools.mise.install"},
-		{AppsModuleName, "apps.aur.warp-terminal-bin.checkout"},
+		{AppsModuleName, "apps.aur.slack-desktop.checkout"},
 		{VicinaeModuleName, "vicinae.package.checkout"},
 	} {
 		if !hasStep(moduleNamed(t, modules, check.module), check.step) {
 			t.Fatalf("module %q lacks reproducible factory step %q", check.module, check.step)
 		}
 	}
-	assertStepSourceCommit(t, moduleNamed(t, modules, AppsModuleName), "apps.aur.warp-terminal-bin.checkout", policyPins["warp-terminal-bin"].SourceCommit)
+	assertStepSourceCommit(t, moduleNamed(t, modules, AppsModuleName), "apps.aur.slack-desktop.checkout", policyPins["slack-desktop"].SourceCommit)
 	assertStepSourceCommit(t, moduleNamed(t, modules, VicinaeModuleName), "vicinae.package.checkout", policyPins[VicinaePackageName].SourceCommit)
-	assertStepPatchSHA256(t, moduleNamed(t, modules, AppsModuleName), "apps.aur.warp-terminal-bin.patch.verify", policyPins["warp-terminal-bin"].PatchSHA256)
+	assertStepPatchSHA256(t, moduleNamed(t, modules, AppsModuleName), "apps.aur.slack-desktop.patch.verify", policyPins["slack-desktop"].PatchSHA256)
 	assertStepPatchSHA256(t, moduleNamed(t, modules, VicinaeModuleName), "vicinae.package.patch.verify", policyPins[VicinaePackageName].PatchSHA256)
 
 	plan, err := planner.BuildPlan(modules, planner.Selection{})

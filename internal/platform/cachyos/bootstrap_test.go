@@ -342,7 +342,7 @@ func TestBootstrapModuleAndRequestKernelDoNotAliasMutationInputs(t *testing.T) {
 func TestBootstrapModuleReconcilesDependencyOwnedChrome(t *testing.T) {
 	observation := bootstrapObservationForBoot(BootObservation{})
 	observation.ChromeInstalled = false
-	observation.ExplicitSet = []string{"paru", "cosmic-store", "flatpak", "zsh", "nano"}
+	observation.ExplicitSet = []string{"paru", "cachyos-packageinstaller", "flatpak", "zsh", "nano", "ufw", "ufw-extras"}
 	module := mustBootstrapModule(t, observation)
 	if slices.Contains(stepIDs(module.Steps), bootstrapChromeInstall) {
 		t.Fatalf("dependency-owned Chrome was incorrectly reinstalled: %v", stepIDs(module.Steps))
@@ -408,8 +408,8 @@ func TestBootstrapModuleUsesResolvedPolicyChromePin(t *testing.T) {
 
 func TestBootstrapPlanIsDeterministicAndConverged(t *testing.T) {
 	observation := BootstrapObservation{
-		InstalledPackages: map[string]string{"paru": "2", "cosmic-store": "1", "flatpak": "1", "zsh": "5", "nano": "8", "ananicy-cpp": "1", "ufw": "1", "google-chrome": "1"},
-		ExplicitSet:       []string{"paru", "cosmic-store", "flatpak", "zsh", "nano", "google-chrome"},
+		InstalledPackages: map[string]string{"paru": "2", "cachyos-packageinstaller": "1", "flatpak": "1", "zsh": "5", "nano": "8", "ananicy-cpp": "1", "ufw": "1", "ufw-extras": "1", "google-chrome": "1"},
+		ExplicitSet:       []string{"paru", "cachyos-packageinstaller", "flatpak", "zsh", "nano", "ufw", "ufw-extras", "google-chrome"},
 		Services: []ServiceObservation{
 			{Unit: "ananicy-cpp.service", Installed: false, Enabled: true, Active: true},
 			{Unit: "ufw.service", Installed: false, Enabled: true, Active: true},
@@ -475,8 +475,9 @@ func bytesEqual(left, right []byte) bool {
 
 func bootstrapObservationForBoot(boot BootObservation) BootstrapObservation {
 	return BootstrapObservation{
-		InstalledPackages: map[string]string{"paru": "2", "cosmic-store": "1", "flatpak": "1", "zsh": "5", "nano": "8", "google-chrome": "1"},
-		ExplicitSet:       []string{"paru", "cosmic-store", "flatpak", "zsh", "nano", "google-chrome"},
+		InstalledPackages: map[string]string{"paru": "2", "cachyos-packageinstaller": "1", "flatpak": "1", "zsh": "5", "nano": "8", "google-chrome": "1", "ufw": "1", "ufw-extras": "1"},
+		ExplicitSet:       []string{"paru", "cachyos-packageinstaller", "flatpak", "zsh", "nano", "google-chrome", "ufw", "ufw-extras"},
+		Services:          []ServiceObservation{{Unit: "ufw.service", Installed: true, Active: true, Enabled: true}},
 		ChromeInstalled:   true,
 		ZshConverged:      true,
 		Boot:              boot,

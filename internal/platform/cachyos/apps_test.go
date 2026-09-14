@@ -42,10 +42,12 @@ func TestAppsPlanHasExactInventoryPinsServicesGroupsAndFallback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("BuildAppsRequestPlanWithContext() error = %v", err)
 	}
-	if !reflect.DeepEqual(requestPlan.PacmanPackages, []string{"chatgpt-desktop-bin", "cursor-bin", "discord", "docker", "localsend", "tailscale"}) {
+	wantPacman := []string{"chatgpt-desktop-bin", "cursor-bin", "discord", "docker", "github-cli", "localsend", "rust", "shelly", "tailscale", "warp-terminal"}
+	if !reflect.DeepEqual(requestPlan.PacmanPackages, wantPacman) {
 		t.Fatalf("pacman inventory = %#v", requestPlan.PacmanPackages)
 	}
-	if !reflect.DeepEqual(requestPlan.AURPackages, []string{"ai-usagebar-bin", "docker-desktop", "hyprwhspr", "nordvpn-bin", "slack-desktop", "warp-terminal-bin"}) {
+	wantAUR := []string{"ai-usagebar-bin", "docker-desktop", "hyprwhspr", "nordvpn-bin", "slack-desktop"}
+	if !reflect.DeepEqual(requestPlan.AURPackages, wantAUR) {
 		t.Fatalf("AUR inventory = %#v", requestPlan.AURPackages)
 	}
 	if len(requestPlan.AURPins) != len(requestPlan.AURPackages) {
@@ -257,7 +259,7 @@ func containsArg(values []string, want string) bool {
 }
 
 func testAppsPins() map[string]catalog.AURLocalPin {
-	packages := []string{"warp-terminal-bin", "slack-desktop", "docker-desktop", "hyprwhspr", "ai-usagebar-bin", "nordvpn-bin"}
+	packages := []string{"slack-desktop", "docker-desktop", "hyprwhspr", "ai-usagebar-bin", "nordvpn-bin"}
 	pins := make(map[string]catalog.AURLocalPin, len(packages))
 	for i, name := range packages {
 		pins[name] = catalog.AURLocalPin{

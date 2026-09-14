@@ -1,4 +1,4 @@
-// Minimal Omarchy-style polkit agent for Niri.
+// Minimal polkit agent for Niri.
 // Fingerprint: square + icon only. Password: lock + field. Esc cancels. No Cancel button.
 import QtQuick
 import Quickshell

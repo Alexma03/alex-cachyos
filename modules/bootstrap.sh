@@ -57,7 +57,7 @@ _bootstrap_install() {
   ((${#missing_want[@]})) && printf '%s\n' "${missing_want[@]}" >"$want_file"
   ((${#installed_remove[@]})) && printf '%s\n' "${installed_remove[@]}" >"$rem_file"
 
-  ao_log "bootstrap: pacman want/remove + boot tweaks (pkexec — pon la huella)"
+  ao_log "bootstrap: full system upgrade + wanted packages (pkexec — pon la huella)"
   ao_root bash -c "
     set -euo pipefail
     source '$AO_ROOT/lib/common.sh'
@@ -68,24 +68,30 @@ _bootstrap_install() {
     mapfile -t rem < <(grep -vE '^\\s*\$' \"\$rem_file\" || true)
 
     if (( \${#want[@]} )); then
-      ao_log \"bootstrap: installing: \${want[*]}\"
-      pacman -S --needed --noconfirm \"\${want[@]}\"
+      ao_log \"bootstrap: pacman -Syu + installing: \${want[*]}\"
+      pacman -Syu --needed --noconfirm \"\${want[@]}\"
     else
-      ao_log 'bootstrap: want packages already present'
+      ao_log 'bootstrap: pacman -Syu (no missing bootstrap packages)'
+      pacman -Syu --noconfirm
+    fi
+
+    ao_pacman_mark_explicit_files '$tpl/packages.want'
+
+    # Never remove the kernel that is currently executing.
+    if [[ \$(uname -r) == *-lts* ]]; then
+      filtered=()
+      for p in \"\${rem[@]}\"; do
+        [[ \$p == linux-cachyos-lts || \$p == linux-cachyos-lts-headers ]] && continue
+        filtered+=(\"\$p\")
+      done
+      rem=(\"\${filtered[@]}\")
+      ao_warn 'running the LTS kernel; deferring its removal until a later apply'
     fi
 
     if (( \${#rem[@]} )); then
       ao_log \"bootstrap: removing: \${rem[*]}\"
-      if ! pacman -Rns --noconfirm \"\${rem[@]}\" 2>/tmp/alex-cachyos-bootstrap-rm.err; then
-        ao_warn 'batch remove had conflicts; retrying per-package'
-        for p in \"\${rem[@]}\"; do
-          pacman -Q \"\$p\" &>/dev/null || continue
-          if ! pacman -Rns --noconfirm \"\$p\" 2>/dev/null; then
-            ao_warn \"skip \$p (deps or protected)\"
-          fi
-        done
-      fi
-      rm -f /tmp/alex-cachyos-bootstrap-rm.err
+      # Keep cleanup atomic. Dependency conflicts abort without partial removal.
+      pacman -Rns --noconfirm \"\${rem[@]}\"
     else
       ao_log 'bootstrap: nothing to remove'
     fi
@@ -104,13 +110,25 @@ _bootstrap_install() {
     if [[ \$changed -eq 1 ]]; then
       mkinitcpio -P
       if [[ -x /usr/bin/grub-mkconfig ]]; then
-        grub-mkconfig -o /boot/grub/grub.cfg || ao_warn 'grub-mkconfig failed'
+        grub_tmp=\$(mktemp /boot/grub/grub.cfg.alex-cachyos.XXXXXX)
+        grub-mkconfig -o \"\$grub_tmp\"
+        grub-script-check \"\$grub_tmp\"
+        install -m 600 \"\$grub_tmp\" /boot/grub/grub.cfg
+        rm -f \"\$grub_tmp\"
       fi
     fi
 
     if pacman -Q ananicy-cpp &>/dev/null; then
       systemctl enable --now ananicy-cpp.service
       ao_log 'bootstrap: ananicy-cpp enabled'
+    fi
+
+    if pacman -Q ufw &>/dev/null; then
+      ufw --force default deny incoming
+      ufw --force default allow outgoing
+      ufw --force enable
+      systemctl enable --now ufw.service
+      ao_log 'bootstrap: UFW enabled (deny incoming, allow outgoing)'
     fi
   "
   rm -rf "$work"
@@ -124,6 +142,10 @@ _bootstrap_install() {
   fi
 
   _bootstrap_fix_zshrc
+
+  if ! command -v cachyos-hello >/dev/null 2>&1; then
+    rm -f "$HOME/.config/autostart/cachyos-hello.desktop"
+  fi
 
   ao_log "bootstrap: done — login stays fish; zsh is bare for Cursor; editor=nano"
   ao_log "bootstrap: docs: docs/bootstrap.md"
@@ -164,5 +186,5 @@ PY
 
 _bootstrap_remove() {
   ao_warn "bootstrap --remove does not reinstall stock bloat"
-  ao_log "bootstrap: leave google-chrome / paru / cosmic-store / zsh as-is (safe default)"
+  ao_log "bootstrap: leave Google Chrome / paru / CachyOS Package Installer / zsh as-is"
 }

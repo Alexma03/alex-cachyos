@@ -128,7 +128,7 @@ func TestDevtoolsGoldenPlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	const golden = "010d5519a63cc75e3d35fefde625d798b5d269c3a8e4fbc662604c5b94251085"
+	const golden = "c216ba04747e20a10ef6b0be6edb9595bbfa3592fec2eca56cd6dfeb78bf80bf"
 	if digest != golden {
 		t.Fatalf("devtools plan digest = %q, want golden %q", digest, golden)
 	}

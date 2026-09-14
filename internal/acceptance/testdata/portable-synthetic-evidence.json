@@ -22,7 +22,7 @@
     "templates/roles/workstation/hyprwhspr/config.json"
   ],
   "overlays": null,
-  "planDigest": "a3d849bedba1b84fc84951e089e26c2c13992ba7c564d90f8fdbbd0f29f4b374",
+  "planDigest": "77a46a0214faae0b1379c72096fe9d55445214c5b2f1b4bf3cd78262cd11812c",
   "stepOrder": [
     "bootstrap.kernel.lts",
     "bootstrap.packages.explicit",

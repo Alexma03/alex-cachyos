@@ -74,6 +74,7 @@ _apps_install() {
     else
       ao_log 'apps: pacman packages already present'
     fi
+    ao_pacman_mark_explicit_files '$tpl/packages.pacman'
 
     if pacman -Q docker &>/dev/null; then
       systemctl enable --now docker.service

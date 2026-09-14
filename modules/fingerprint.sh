@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Module: fingerprint — SDCP libfprint package + PAM/greetd overlays.
+# Module: fingerprint — SDCP libfprint package + sudo/polkit PAM overlays.
 #
 # Install: build packaging/libfprint-egismoc-sdcp-git, install, apply overlays.
 # Remove:  ./apply --profile galaxy --only fingerprint --remove
@@ -26,11 +26,22 @@ module_fingerprint() {
 
 _fingerprint_install() {
   local pkgdir=$1 overlay=$2
-  local builddir pkgfile
+  local builddir pkgfile commit pkgrel installed_version
 
   [[ -f $pkgdir/PKGBUILD ]] || ao_die "missing $pkgdir/PKGBUILD"
   ao_has_cmd makepkg || ao_die "makepkg required (pacman base-devel)"
   ao_has_cmd pkexec || ao_die "pkexec required (polkit)"
+
+  commit=$(sed -nE 's/^_commit=([[:xdigit:]]+).*/\1/p' "$pkgdir/PKGBUILD")
+  pkgrel=$(sed -nE 's/^pkgrel=([0-9]+).*/\1/p' "$pkgdir/PKGBUILD")
+  installed_version=$(pacman -Q libfprint-egismoc-sdcp-git 2>/dev/null | awk '{print $2}' || true)
+  if [[ -n $commit && -n $pkgrel \
+        && $installed_version == *".${commit:0:7}-$pkgrel" ]]; then
+    ao_log "fingerprint: pinned package already current ($installed_version); skipping rebuild"
+    _fingerprint_configure_root "$overlay" ""
+    _fingerprint_done
+    return 0
+  fi
 
   builddir=$(mktemp -d /tmp/alex-cachyos-fprint.XXXXXX)
   # shellcheck disable=SC2064
@@ -46,6 +57,13 @@ _fingerprint_install() {
   [[ -n $pkgfile ]] || ao_die "built package not found"
   [[ -d $overlay/pam.d ]] || ao_die "missing overlay $overlay/pam.d"
 
+  _fingerprint_configure_root "$overlay" "$pkgfile"
+  _fingerprint_done
+}
+
+_fingerprint_configure_root() {
+  local overlay=$1 pkgfile=$2
+
   ao_log "fingerprint: install package + PAM (pkexec — pon la huella en el diálogo)"
   ao_root bash -c "
     set -euo pipefail
@@ -58,21 +76,22 @@ _fingerprint_install() {
       ao_log 'cleared IgnorePkg libfprint'
     fi
 
-    pacman -U --noconfirm '$pkgfile'
+    if [[ -n '$pkgfile' ]]; then
+      pacman -U --noconfirm '$pkgfile'
+    fi
     pacman -Q fprintd &>/dev/null || pacman -S --needed --noconfirm fprintd usbutils
 
-    # cosmic-greeter PAM must match login (system-local-login), not system-auth,
-    # or cosmic-comp panics with RuntimeDirNotSet at the login screen.
-    for f in sudo polkit-1 cosmic-greeter system-local-login greetd su su-l; do
+    # Login uses the dedicated alex-cachyos-login service from desktop. Do not
+    # add fprintd to system-local-login: Noctalia drives lock biometrics itself.
+    for f in sudo polkit-1; do
       [[ -f '$overlay/pam.d/'\$f ]] || continue
       ao_install_file '$overlay/pam.d/'\$f '/etc/pam.d/'\$f
     done
-    if [[ -f '$overlay/greetd/cosmic-greeter.toml' ]]; then
-      ao_install_file '$overlay/greetd/cosmic-greeter.toml' '/etc/greetd/cosmic-greeter.toml'
-    fi
     systemctl try-restart fprintd.service 2>/dev/null || true
   "
+}
 
+_fingerprint_done() {
   ao_log "fingerprint: package + PAM installed"
   ao_log "fingerprint: enroll with:  fprintd-enroll -f right-index-finger"
   ao_log "fingerprint: verify with:  fprintd-verify && sudo -k && sudo true"
@@ -85,10 +104,9 @@ _fingerprint_remove() {
   ao_root bash -c "
     set -euo pipefail
     source '$AO_ROOT/lib/common.sh'
-    for f in sudo polkit-1 cosmic-greeter system-local-login greetd su su-l; do
+    for f in sudo polkit-1; do
       ao_restore_file '/etc/pam.d/'\$f
     done
-    ao_restore_file '/etc/greetd/cosmic-greeter.toml'
     if pacman -Q libfprint-egismoc-sdcp-git &>/dev/null; then
       pacman -Rdd --noconfirm libfprint-egismoc-sdcp-git
       pacman -S --needed --noconfirm libfprint

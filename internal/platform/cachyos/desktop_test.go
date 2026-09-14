@@ -19,7 +19,23 @@ func TestDesktopRequestPlanUsesAuthoritativePackagesAndTypedOperations(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantPackages := []string{"accountsservice", "greetd", "niri", "noctalia", "noctalia-greeter", "quickshell", "xwayland-satellite"}
+	wantPackages := []string{
+		"accountsservice",
+		"foot",
+		"gnome-keyring",
+		"nautilus",
+		"niri",
+		"noctalia",
+		"noctalia-greeter",
+		"playerctl",
+		"power-profiles-daemon",
+		"python-gobject",
+		"quickshell",
+		"ttf-meslo-nerd",
+		"xdg-desktop-portal-gnome",
+		"xdg-desktop-portal-gtk",
+		"xwayland-satellite",
+	}
 	if !reflect.DeepEqual(plan.Packages, wantPackages) {
 		t.Fatalf("packages = %#v, want %#v", plan.Packages, wantPackages)
 	}

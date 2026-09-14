@@ -1,7 +1,9 @@
-# Wanted on galaxy after bootstrap (pacman repos).
+# Wanted on galaxy after bootstrap (pacman/CachyOS repos).
 # google-chrome comes from AUR via paru (handled in module).
 paru
-cosmic-store
+cachyos-packageinstaller
 flatpak
 zsh
 nano
+ufw
+ufw-extras
