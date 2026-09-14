@@ -18,7 +18,16 @@ thickness = 30
 warning_threshold = 10
 
 [brightness]
-sync_all_monitors = true
+enable_ddcutil = true
+sync_all_monitors = false
+
+[brightness.monitor.DP-1]
+backend = "ddcutil"
+ddc_bus = 14
+
+[brightness.monitor.DP-3]
+backend = "ddcutil"
+ddc_bus = 16
 
 [control_center]
 width = 800

@@ -17,7 +17,8 @@ start = [ "launcher", "workspaces", "sysmon", "ram", "status" ]
 thickness = 30
 
 [brightness]
-sync_all_monitors = true
+enable_ddcutil = true
+sync_all_monitors = false
 
 [control_center]
 width = 800

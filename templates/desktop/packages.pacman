@@ -11,6 +11,7 @@ gnome-keyring
 accountsservice
 nautilus
 foot
+ddcutil
 power-profiles-daemon
 playerctl
 python-gobject

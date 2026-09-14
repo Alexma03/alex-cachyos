@@ -113,8 +113,8 @@
     },
     {
       "path": "templates/desktop/packages.pacman",
-      "size": 353,
-      "sha256": "965c8361a06afcf668f62ba05b5085311f167d82740164a8ac6ebe80cba59aaa"
+      "size": 361,
+      "sha256": "1b838bb0eb5833576607088f2de8bef28863d0a05a21bc9efa956772cbd7c290"
     },
     {
       "path": "templates/devtools/mise.config.toml",
@@ -138,8 +138,8 @@
     },
     {
       "path": "templates/hosts/galaxy/fixedDisplays/noctalia/settings.toml",
-      "size": 2612,
-      "sha256": "ffb577f467b7ebf98efe273cc10572195ddf430583df7d5eacf445b1c797fb37"
+      "size": 2732,
+      "sha256": "377f248e6f57bf2ffd244fbf5ef3a0d0a333c1abf925105307128c68782bc22c"
     },
     {
       "path": "templates/hosts/galaxy/fixedInputDevices/hyprwhspr/config.json",
@@ -178,8 +178,8 @@
     },
     {
       "path": "templates/roles/workstation/noctalia/settings.toml",
-      "size": 2533,
-      "sha256": "99440c89d680126cc383f3f60b71aef7c0ed7cfd9f3085680e22dc30827c500f"
+      "size": 2556,
+      "sha256": "da4424f5e9080f539526e69462cd33dd38f33f7b8c7a51ef4116da5122724cca"
     },
     {
       "path": "templates/vicinae/99-vicinae-cosmic.conf",

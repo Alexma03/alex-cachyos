@@ -21,6 +21,7 @@ func TestDesktopRequestPlanUsesAuthoritativePackagesAndTypedOperations(t *testin
 	}
 	wantPackages := []string{
 		"accountsservice",
+		"ddcutil",
 		"foot",
 		"gnome-keyring",
 		"nautilus",

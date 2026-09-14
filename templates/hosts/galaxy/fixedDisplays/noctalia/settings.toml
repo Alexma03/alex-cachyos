@@ -89,3 +89,11 @@ widget_order = [ "lockscreen-login-box@eDP-1", "lockscreen-login-box@DP-1", "loc
         show_unlock_hint = true
         show_weather = true
 
+[brightness.monitor.DP-1]
+backend = "ddcutil"
+ddc_bus = 14
+
+[brightness.monitor.DP-3]
+backend = "ddcutil"
+ddc_bus = 16
+
