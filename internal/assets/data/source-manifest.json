@@ -173,8 +173,8 @@
     },
     {
       "path": "templates/roles/workstation/niri/config.kdl",
-      "size": 25389,
-      "sha256": "40fd42c08665d2306bf17f0b107be309f7a5da89a17560341b31774ccc277867"
+      "size": 25532,
+      "sha256": "810c64db140b4af743c11c1000ce5a047746e7e60012fbb54a3410506080f7f1"
     },
     {
       "path": "templates/roles/workstation/noctalia/settings.toml",

@@ -339,6 +339,7 @@ binds {
     Mod+Shift+T hotkey-overlay-title="Open recovery terminal: foot" { spawn "foot"; }
     Mod+E hotkey-overlay-title="Open Files" { spawn "nautilus"; }
     Mod+Space hotkey-overlay-title="Vicinae" { spawn "vicinae" "toggle"; }
+    Mod+V hotkey-overlay-title="Vicinae Clipboard" { spawn-sh "vicinae state open && vicinae close || vicinae cmd launch clipboard:history"; }
     Mod+Shift+S hotkey-overlay-title="Noctalia settings" { spawn-sh "noctalia msg settings-toggle"; }
     Super+Alt+L hotkey-overlay-title="Lock Screen" { spawn-sh "noctalia msg session lock"; }
 
@@ -568,7 +569,7 @@ binds {
     Mod+Shift+Equal { set-window-height "+10%"; }
 
     // Move the focused window between the floating and the tiling layout.
-    Mod+V       { toggle-window-floating; }
+    Mod+Alt+V   { toggle-window-floating; }
     Mod+Shift+V { switch-focus-between-floating-and-tiling; }
 
     // Toggle tabbed column display mode.
