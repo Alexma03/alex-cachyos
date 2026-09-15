@@ -133,8 +133,8 @@
     },
     {
       "path": "templates/devtools/mise.config.toml",
-      "size": 389,
-      "sha256": "c80fe1afffa718c0779716ded85e93c4f37ce8d0bd0c3e80f22ec0de15d6fde5"
+      "size": 232,
+      "sha256": "bce85102d57cab010c2a4134a3065bf4d935f97ceac9eb38c51fb400873976af"
     },
     {
       "path": "templates/devtools/npmrc",

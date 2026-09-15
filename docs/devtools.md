@@ -10,7 +10,7 @@
 
 1. Installs `mise` via pacman (pkexec)
 2. Writes user configs:
-   - `~/.config/mise/config.toml` — `node=lts`, `npm=latest`, `pnpm=latest`
+   - `~/.config/mise/config.toml` — `go=latest`, `node=lts`, `npm=latest`, `pnpm=latest`
    - `~/.config/pnpm/config.yaml` — cooldown / trust / strict builds
    - `~/.npmrc` — same policy for npm
 3. Activates mise in fish / zsh / bash + appends `~/.local/bin` to PATH

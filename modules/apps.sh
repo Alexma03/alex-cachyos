@@ -56,7 +56,7 @@ _apps_install() {
 
   user=$(id -un)
 
-  ao_log "apps: pacman packages + docker/tailscale/nordvpn services (pkexec — huella)"
+  ao_log "apps: pacman packages + docker/tailscale/nordvpn services (pkexec — autentícate)"
   ao_root bash -c "
     set -euo pipefail
     source '$AO_ROOT/lib/common.sh'
@@ -91,7 +91,7 @@ _apps_install() {
 
   if ((${#missing_aur[@]})); then
     ao_has_cmd paru || ao_die "paru required (bootstrap)"
-    ao_log "apps: paru -S ${missing_aur[*]} (puede pedir huella varias veces)"
+    ao_log "apps: paru -S ${missing_aur[*]} (puede pedir autenticación varias veces)"
     paru -S --needed --noconfirm "${missing_aur[@]}"
   else
     ao_log "apps: AUR packages already present"
@@ -105,7 +105,7 @@ _apps_install() {
 
   # NordVPN service after AUR install
   if pacman -Q nordvpn-bin &>/dev/null; then
-    ao_log "apps: enable nordvpnd (pkexec — huella)"
+    ao_log "apps: enable nordvpnd (pkexec — autentícate)"
     ao_root bash -c "
       set -euo pipefail
       source '$AO_ROOT/lib/common.sh'

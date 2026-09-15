@@ -60,7 +60,8 @@ cd alex-cachyos
 Limpieza inicial de CachyOS minimal + Chrome (AUR), paru, cosmic-store, zsh pelado
 (para Cursor). Quita Firefox stock y vim/`cachyos-zsh-config`. Login sigue en fish;
 editor de terminal: nano. El ISO puede traer COSMIC; este repo deja **Niri** como
-sesión por defecto.
+sesión por defecto. Al comenzar ejecuta una actualización general de paquetes
+oficiales (`pacman -Syu`), AUR y aplicaciones Flatpak.
 
 Ver [docs/bootstrap.md](docs/bootstrap.md).
 

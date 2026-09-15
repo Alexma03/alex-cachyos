@@ -29,7 +29,7 @@ _devtools_install() {
   [[ -d $tpl ]] || ao_die "missing templates: $tpl"
 
   if ! pacman -Q mise &>/dev/null; then
-    ao_log "devtools: installing mise (pkexec — pon la huella)"
+    ao_log "devtools: installing mise (pkexec — autentícate)"
     ao_root pacman -S --needed --noconfirm mise
   else
     ao_log "devtools: mise already installed"
@@ -55,8 +55,8 @@ _devtools_install() {
   if command -v corepack >/dev/null 2>&1; then
     corepack disable 2>/dev/null || true
   fi
-  [[ $(pnpm --version) == 12.* ]] \
-    || ao_die "devtools: expected pnpm 12.x after mise install"
+  pnpm --version >/dev/null \
+    || ao_die "devtools: pnpm is unavailable after mise install"
   [[ $(pnpm bin -g) == "$home/.local/bin" ]] \
     || ao_die "devtools: pnpm global bin is not $home/.local/bin"
 

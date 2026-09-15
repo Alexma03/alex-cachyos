@@ -133,6 +133,15 @@ _bootstrap_install() {
   "
   rm -rf "$work"
 
+  ao_log "bootstrap: updating installed AUR packages"
+  paru -Sua --noconfirm --ignore libfprint-egismoc-sdcp-git
+
+  if ao_has_cmd flatpak; then
+    ao_log "bootstrap: updating system and user Flatpak applications"
+    ao_root flatpak update --system --noninteractive -y
+    flatpak update --user --noninteractive -y
+  fi
+
   if ! pacman -Q google-chrome &>/dev/null; then
     ao_log "bootstrap: installing google-chrome via paru (may ask for authentication)"
     ao_has_cmd paru || ao_die "paru missing after install"
