@@ -36,6 +36,7 @@ var declaredAssets = []declaredAsset{
 	{path: "bin/alex-cachyos-webapp-launch", mode: assetCopied},
 	{path: "catalog/", mode: assetCopied},
 	{path: "overlays/galaxy/", mode: assetEmbedded},
+	{path: "overlays/generic/", mode: assetEmbedded},
 	{path: "packaging/", mode: assetCopied},
 	{path: "templates/apps/", mode: assetEmbedded},
 	{path: "templates/bootstrap/", mode: assetEmbedded},

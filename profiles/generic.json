@@ -1,0 +1,16 @@
+{
+  "name": "generic",
+  "description": "Generic CachyOS/Niri workstation — common apps and desktop without Galaxy-specific hardware settings.",
+  "modules": {
+    "bootstrap": true,
+    "fingerprint": false,
+    "devtools": true,
+    "apps": true,
+    "vicinae": true,
+    "desktop": true,
+    "verify": true
+  },
+  "overlay_profile": "generic",
+  "desktop_variant": "workstation",
+  "fingerprint_supported": false
+}

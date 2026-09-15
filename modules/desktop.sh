@@ -16,8 +16,24 @@ module_desktop() {
   if [[ $remove -eq 1 ]]; then
     _desktop_remove
   else
+    if [[ ${AO_FINGERPRINT_SUPPORTED:-0} -eq 0 ]]; then
+      _fingerprint_remove_managed_state "$overlay"
+    fi
     _desktop_install "$tpl" "$overlay"
   fi
+}
+
+_desktop_template_path() {
+  local component=$1
+  case "${AO_DESKTOP_VARIANT:-}:$component" in
+    galaxy:niri) printf '%s\n' "$AO_ROOT/templates/niri/config.kdl" ;;
+    galaxy:noctalia) printf '%s\n' "$AO_ROOT/templates/noctalia/config.toml" ;;
+    galaxy:hyprwhspr) printf '%s\n' "$AO_ROOT/templates/hyprwhspr/config.json" ;;
+    workstation:niri) printf '%s\n' "$AO_ROOT/templates/roles/workstation/niri/config.kdl" ;;
+    workstation:noctalia) printf '%s\n' "$AO_ROOT/templates/roles/workstation/noctalia/settings.toml" ;;
+    workstation:hyprwhspr) printf '%s\n' "$AO_ROOT/templates/roles/workstation/hyprwhspr/config.json" ;;
+    *) ao_die "unsupported desktop variant/component: ${AO_DESKTOP_VARIANT:-unset}/$component" ;;
+  esac
 }
 
 _desktop_read_list() {
@@ -62,7 +78,7 @@ EOF
 _desktop_install() {
   local tpl=$1 overlay=$2
   local home=${HOME:?}
-  local user work pac_file noctalia_tmp
+  local user work pac_file noctalia_tmp niri_template noctalia_template hyprwhspr_template
   local -a pac missing
 
   ao_has_cmd pkexec || ao_die "pkexec required (polkit)"
@@ -84,7 +100,7 @@ _desktop_install() {
   _desktop_ensure_quickshell_polkit || ao_warn "desktop: graphical polkit agent is not running"
 
   if ((${#missing[@]})); then
-    ao_log "desktop: installing the complete Niri runtime (pkexec — huella)"
+    ao_log "desktop: installing the complete Niri runtime (pkexec — autentícate)"
     ao_root bash -c "
       set -euo pipefail
       mapfile -t want < <(grep -vE '^\\s*\$' '$pac_file' || true)
@@ -94,23 +110,27 @@ _desktop_install() {
     ao_log "desktop: Niri runtime packages already present"
   fi
 
-  ao_install_user_file "$tpl/niri/config.kdl" "$home/.config/niri/config.kdl"
+  niri_template=$(_desktop_template_path niri)
+  noctalia_template=$(_desktop_template_path noctalia)
+  hyprwhspr_template=$(_desktop_template_path hyprwhspr)
+
+  ao_install_user_file "$niri_template" "$home/.config/niri/config.kdl"
 
   noctalia_tmp=$work/noctalia-config.toml
-  sed "s|@HOME@|$home|g" "$tpl/noctalia/config.toml" >"$noctalia_tmp"
+  sed "s|@HOME@|$home|g" "$noctalia_template" >"$noctalia_tmp"
   ao_install_user_file "$noctalia_tmp" "$home/.config/noctalia/config.toml"
   # settings.toml is Noctalia-owned mutable state and overrides declarative config.
   # Removing it makes every apply converge to templates/noctalia/config.toml.
   rm -f "$home/.local/state/noctalia/settings.toml" \
         "$home/.local/state/noctalia/settings.toml.bak.alex-cachyos"
 
-  ao_install_user_file "$tpl/hyprwhspr/config.json" "$home/.config/hyprwhspr/config.json"
+  ao_install_user_file "$hyprwhspr_template" "$home/.config/hyprwhspr/config.json"
   ao_install_user_file "$tpl/quickshell-polkit/shell.qml" "$home/.config/quickshell/polkit/shell.qml"
   ao_install_user_file "$tpl/quickshell-polkit/PolkitModel.js" "$home/.config/quickshell/polkit/PolkitModel.js"
 
   printf '%s\n' '[Desktop]' 'Session=niri' >"$home/.dmrc"
 
-  ao_log "desktop: configuring greetd and removing the old desktop stack (pkexec — huella)"
+  ao_log "desktop: configuring greetd and removing the old desktop stack (pkexec — autentícate)"
   ao_root bash -c "
     set -euo pipefail
     source '$AO_ROOT/lib/common.sh'

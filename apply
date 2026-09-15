@@ -3,6 +3,7 @@
 #
 # Usage:
 #   ./apply --profile galaxy
+#   ./apply --profile generic
 #   ./apply --profile galaxy --only fingerprint
 #   ./apply --profile galaxy --only fingerprint --remove
 #   ./apply --profile galaxy --dry-run
@@ -37,6 +38,8 @@ AO_ONLY=
 AO_WITH=()
 AO_WITHOUT=()
 AO_OVERLAY_PROFILE=
+AO_DESKTOP_VARIANT=
+AO_FINGERPRINT_SUPPORTED=0
 AO_THEME=
 
 usage() {
@@ -59,9 +62,11 @@ Options:
 
 Profiles:
   galaxy             Galaxy Book — bootstrap + fingerprint + mise + apps + vicinae + niri
+  generic            Generic CachyOS/Niri workstation without Galaxy-specific hardware settings
 
 Examples:
   ./apply --profile galaxy
+  ./apply --profile generic
   ./apply --profile galaxy --only bootstrap
   ./apply --profile galaxy --only fingerprint
   ./apply --profile galaxy --only devtools
@@ -99,7 +104,12 @@ allowed = {"bootstrap", "fingerprint", "devtools", "apps", "vicinae", "desktop",
 unknown = set(mods) - allowed
 if unknown:
     raise SystemExit(f"unknown profile modules: {', '.join(sorted(unknown))}")
+desktop_variant = p.get("desktop_variant")
+if desktop_variant not in {"galaxy", "workstation"}:
+    raise SystemExit("desktop_variant must be 'galaxy' or 'workstation'")
 print("AO_OVERLAY_PROFILE=" + shlex.quote(p.get("overlay_profile") or p["name"]))
+print("AO_DESKTOP_VARIANT=" + shlex.quote(desktop_variant))
+print(f"AO_FINGERPRINT_SUPPORTED={'1' if p.get('fingerprint_supported', False) else '0'}")
 for k, v in mods.items():
     print(f"AO_MOD_{k}={'1' if v else '0'}")
 PY

@@ -72,6 +72,21 @@
       "sha256": "6dc91553f5900f59c9620c64e78ef11c19c1e351c60e6956018280406dd9d735"
     },
     {
+      "path": "overlays/generic/etc/greetd/config.toml",
+      "size": 142,
+      "sha256": "7f8cf3c4a87e8f0032ad49bebc63e3413ed92e9dfb97640d037b60848b90afbc"
+    },
+    {
+      "path": "overlays/generic/etc/noctalia-greeter/greeter.toml",
+      "size": 309,
+      "sha256": "857c62c62179dd73c160aaaa75537b547fd378dcb910ddca534572dd2e7429ea"
+    },
+    {
+      "path": "overlays/generic/etc/pam.d/alex-cachyos-login",
+      "size": 236,
+      "sha256": "70fed0a0fb9939e4c165ddc3cd4f589410560deb53b1f315b7bc973d9ee26d85"
+    },
+    {
       "path": "packaging/libfprint-egismoc-sdcp-git/0001-egismoc-drop-sdcp-claim-on-close.patch",
       "size": 1933,
       "sha256": "dd248cb9225857385f32ce36da887cb039d5ec7bffd54f412a790e898349d03d"
@@ -108,8 +123,8 @@
     },
     {
       "path": "templates/bootstrap/packages.want",
-      "size": 182,
-      "sha256": "61c0e1931cdd7d2ac7fac8a3e64c289c1723e7720df0cfa10e13cc927d45c12e"
+      "size": 203,
+      "sha256": "2d75f92760a8009dcb240985936799e4361ee3daf731b7f14d36dcaf2c0ea9a4"
     },
     {
       "path": "templates/desktop/packages.pacman",

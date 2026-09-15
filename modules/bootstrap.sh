@@ -57,7 +57,7 @@ _bootstrap_install() {
   ((${#missing_want[@]})) && printf '%s\n' "${missing_want[@]}" >"$want_file"
   ((${#installed_remove[@]})) && printf '%s\n' "${installed_remove[@]}" >"$rem_file"
 
-  ao_log "bootstrap: full system upgrade + wanted packages (pkexec — pon la huella)"
+  ao_log "bootstrap: full system upgrade + wanted packages (pkexec — autentícate)"
   ao_root bash -c "
     set -euo pipefail
     source '$AO_ROOT/lib/common.sh'
@@ -134,7 +134,7 @@ _bootstrap_install() {
   rm -rf "$work"
 
   if ! pacman -Q google-chrome &>/dev/null; then
-    ao_log "bootstrap: installing google-chrome via paru (may ask fingerprint)"
+    ao_log "bootstrap: installing google-chrome via paru (may ask for authentication)"
     ao_has_cmd paru || ao_die "paru missing after install"
     paru -S --needed --noconfirm google-chrome
   else

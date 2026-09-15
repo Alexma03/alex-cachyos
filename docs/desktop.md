@@ -7,6 +7,7 @@ Daily desktop is **Niri + Noctalia**. COSMIC stays only as a greeter login optio
 
 ```bash
 ./apply --profile galaxy --only desktop
+./apply --profile generic --only desktop
 ```
 
 Full `./apply --profile galaxy` runs this after apps (so `hyprwhspr` / `ai-usagebar-bin` exist).
@@ -14,9 +15,9 @@ Full `./apply --profile galaxy` runs this after apps (so `hyprwhspr` / `ai-usage
 ## What it does
 
 1. Installs `niri`, `noctalia`, `xwayland-satellite`, `quickshell`
-2. Writes the live Galaxy configs:
+2. Writes the desktop configs selected by the profile:
    - `~/.config/niri/config.kdl` (spawns Noctalia + `qs -c polkit`)
-   - `~/.local/state/noctalia/settings.toml` (`shell.polkit_agent = false`)
+   - `~/.config/noctalia/config.toml` (`shell.polkit_agent = false`)
    - `~/.config/hyprwhspr/config.json`
    - `~/.config/quickshell/polkit/` — Omarchy-style pkexec UI
 3. Stops any other polkit agents (hyprpolkitagent, GNOME/KDE/LXQt, Noctalia agent)
@@ -24,6 +25,12 @@ Full `./apply --profile galaxy` runs this after apps (so `hyprwhspr` / `ai-usage
 5. `hyprwhspr noctalia install` → bar plugin `goodroot/noctwhspr`
 6. Enables Noctalia plugins: `goodroot/noctwhspr`, `felipeartur/ai-usagebar`
 7. Enables `hyprwhspr.service` and starts `qs -c polkit`
+
+`galaxy` adds its touchscreen/stylus mapping, fixed monitor layout, known input
+devices, DDC buses and fingerprint-aware greeter/PAM stack. `generic` uses only
+the `workstation` templates, lets Niri discover outputs and input devices, and
+uses password-only PAM. For safety, the Galaxy fingerprint module cannot be
+force-enabled with the generic profile.
 
 Niri is not a full DE. `pkexec` needs a graphical polkit agent — this profile uses a
 **minimal Quickshell agent** (fingerprint square / password field, Esc to cancel, no Cancel

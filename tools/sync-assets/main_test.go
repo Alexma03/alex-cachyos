@@ -17,6 +17,7 @@ func assetFixture(t *testing.T) string {
 	for _, dir := range []string{
 		filepath.Join("catalog", "nested"),
 		filepath.Join("overlays", "galaxy", "etc", "pam.d"),
+		filepath.Join("overlays", "generic", "etc", "pam.d"),
 		filepath.Join("packaging", "libfprint-egismoc-sdcp-git", "patches"),
 		filepath.Join("templates", "apps"),
 		filepath.Join("templates", "bootstrap"),
@@ -43,6 +44,7 @@ func assetFixture(t *testing.T) string {
 		"catalog/declared.txt":                          []byte("declared\n"),
 		"catalog/nested/asset.bin":                      {0, 1, 2, 255},
 		"overlays/galaxy/etc/pam.d/greetd":              []byte("auth required pam_unix.so\n"),
+		"overlays/generic/etc/pam.d/alex-cachyos-login": []byte("auth include system-local-login\n"),
 		"packaging/libfprint-egismoc-sdcp-git/PKGBUILD": []byte("pkgname=example\n"),
 		"packaging/libfprint-egismoc-sdcp-git/0001-egismoc-drop-sdcp-claim-on-close.patch":         patch,
 		"packaging/libfprint-egismoc-sdcp-git/patches/0001-egismoc-drop-sdcp-claim-on-close.patch": patch,
@@ -109,6 +111,7 @@ func TestSyncWritesManifestAndOnlyDeclaredAssets(t *testing.T) {
 		"catalog/declared.txt",
 		"catalog/nested/asset.bin",
 		"overlays/galaxy/etc/pam.d/greetd",
+		"overlays/generic/etc/pam.d/alex-cachyos-login",
 		"packaging/libfprint-egismoc-sdcp-git/0001-egismoc-drop-sdcp-claim-on-close.patch",
 		"packaging/libfprint-egismoc-sdcp-git/PKGBUILD",
 		"packaging/libfprint-egismoc-sdcp-git/patches/0001-egismoc-drop-sdcp-claim-on-close.patch",
@@ -217,6 +220,7 @@ func TestSyncEmbedsDevtoolsAppsVicinaeLauncher(t *testing.T) {
 	root, dest := syncedFixture(t)
 	copied := "bin/alex-cachyos-webapp-launch"
 	embedded := []string{
+		"overlays/generic/etc/pam.d/alex-cachyos-login",
 		"templates/apps/packages.aur",
 		"templates/apps/packages.pacman",
 		"templates/apps/webapps.list",

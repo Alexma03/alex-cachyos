@@ -10,6 +10,9 @@ module_fingerprint() {
   local overlay="$AO_ROOT/overlays/${AO_OVERLAY_PROFILE:-galaxy}/etc"
   local remove=${AO_REMOVE:-0}
 
+  [[ ${AO_FINGERPRINT_SUPPORTED:-0} -eq 1 ]] \
+    || ao_die "profile $AO_PROFILE does not support the Galaxy fingerprint stack"
+
   ao_log "fingerprint: $([[ $remove -eq 1 ]] && echo remove || echo install)"
 
   if [[ $AO_DRY_RUN -eq 1 ]]; then
@@ -95,6 +98,16 @@ _fingerprint_done() {
   ao_log "fingerprint: package + PAM installed"
   ao_log "fingerprint: enroll with:  fprintd-enroll -f right-index-finger"
   ao_log "fingerprint: verify with:  fprintd-verify && sudo -k && sudo true"
+}
+
+_fingerprint_remove_managed_state() {
+  local overlay=$1
+  if pacman -Q libfprint-egismoc-sdcp-git &>/dev/null \
+     || [[ -e /etc/pam.d/sudo.bak.alex-cachyos \
+        || -e /etc/pam.d/polkit-1.bak.alex-cachyos ]]; then
+    ao_log "fingerprint: removing managed Galaxy state for profile $AO_PROFILE"
+    _fingerprint_remove "$overlay"
+  fi
 }
 
 _fingerprint_remove() {

@@ -1,4 +1,4 @@
-# Wanted on galaxy after bootstrap (pacman/CachyOS repos).
+# Wanted on every supported workstation after bootstrap (pacman/CachyOS repos).
 # google-chrome comes from AUR via paru (handled in module).
 paru
 cachyos-packageinstaller

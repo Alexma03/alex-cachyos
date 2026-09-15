@@ -11,6 +11,8 @@ greeter. No toca `/usr/share/omarchy/` ni asume Omarchy.
 git clone https://github.com/Alexma03/alex-cachyos.git
 cd alex-cachyos
 ./apply --profile galaxy
+# o, para hardware no específico:
+./apply --profile generic
 ```
 
 ## Diseño
@@ -27,17 +29,18 @@ cd alex-cachyos
 
 - Sustituir libs del sistema con **paquetes pacman** (`provides` + `conflicts`), no con `ninja install` ni `/opt` overlays.
 - Ficheros en `/etc` con backup `*.bak.alex-cachyos` y restore en `--remove`.
-- Un perfil = una máquina (o familia). El primero: **galaxy**.
+- Un perfil = una máquina (o familia). `generic` contiene únicamente la base reutilizable.
 
 ## Perfiles
 
 | Perfil | Qué hace |
 |--------|----------|
 | `galaxy` | Galaxy Book — bootstrap + fingerprint + mise + apps + vicinae + niri |
+| `generic` | CachyOS + Niri común, sin huella, pantalla táctil, monitores/dispositivos fijos ni rutas del Galaxy |
 
 ## Módulos
 
-`bootstrap` · `fingerprint` · `devtools` · `apps` · `vicinae` · `desktop`
+`bootstrap` · `fingerprint` · `devtools` · `apps` · `vicinae` · `desktop` · `verify`
 
 ```bash
 ./apply --profile galaxy                      # instalar
@@ -49,6 +52,7 @@ cd alex-cachyos
 ./apply --profile galaxy --only desktop       # niri + noctalia (sesión por defecto)
 ./apply --profile galaxy --only fingerprint --remove
 ./apply --profile galaxy --dry-run
+./apply --profile generic --dry-run
 ```
 
 ## Bootstrap
@@ -120,12 +124,12 @@ templates/bootstrap/
 templates/devtools/
 templates/apps/
 templates/vicinae/
-templates/hosts/galaxy/{niri,noctalia,hyprwhspr}/
+templates/hosts/galaxy/{fixedDisplays,fixedInputDevices,literalHomePaths}/
 templates/roles/workstation/{niri,noctalia,hyprwhspr}/
 templates/quickshell-polkit/
 templates/desktop/
 profiles/
 packaging/libfprint-egismoc-sdcp-git/
-overlays/galaxy/etc/{pam.d,greetd}/
+overlays/{galaxy,generic}/etc/{pam.d,greetd}/
 docs/
 ```

@@ -88,6 +88,7 @@ func TestEmbeddedSourceMountsMatchRepository(t *testing.T) {
 		"templates/quickshell-polkit/shell.qml",
 		"templates/vicinae/cosmic-shortcuts-custom",
 		"overlays/galaxy/etc/pam.d/cosmic-greeter",
+		"overlays/generic/etc/pam.d/alex-cachyos-login",
 	} {
 		want, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(name)))
 		if err != nil {

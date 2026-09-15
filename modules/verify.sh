@@ -3,7 +3,7 @@
 
 module_verify() {
   local home=${HOME:?}
-  local p file expected actual
+  local p file expected actual niri_template noctalia_template
   local -a required legacy leftovers sessions
   AO_VERIFY_FAILURES=0
   AO_VERIFY_WARNINGS=0
@@ -27,8 +27,10 @@ module_verify() {
     || _verify_fail "Noctalia config is invalid"
 
   expected=$(mktemp)
-  sed "s|@HOME@|$home|g" "$AO_ROOT/templates/noctalia/config.toml" >"$expected"
-  cmp -s "$AO_ROOT/templates/niri/config.kdl" "$home/.config/niri/config.kdl" \
+  niri_template=$(_desktop_template_path niri)
+  noctalia_template=$(_desktop_template_path noctalia)
+  sed "s|@HOME@|$home|g" "$noctalia_template" >"$expected"
+  cmp -s "$niri_template" "$home/.config/niri/config.kdl" \
     && _verify_ok "Niri config matches the repository" \
     || _verify_fail "Niri config drifted from the repository"
   cmp -s "$expected" "$home/.config/noctalia/config.toml" \
@@ -56,7 +58,10 @@ module_verify() {
     "$AO_ROOT/templates/desktop/packages.pacman"; do
     while IFS= read -r p; do required+=("$p"); done < <(grep -vE '^\s*(#|$)' "$file")
   done
-  required+=(google-chrome libfprint-egismoc-sdcp-git fprintd vicinae-bin)
+  required+=(google-chrome vicinae-bin)
+  if [[ ${AO_FINGERPRINT_SUPPORTED:-0} -eq 1 ]]; then
+    required+=(libfprint-egismoc-sdcp-git fprintd)
+  fi
   for p in "${required[@]}"; do
     pacman -Q "$p" &>/dev/null || _verify_fail "missing package: $p"
   done
@@ -139,6 +144,24 @@ module_verify() {
     /etc/pam.d/alex-cachyos-login \
     && _verify_ok "the dedicated greeter PAM policy matches the repository" \
     || _verify_fail "the dedicated greeter PAM policy drifted"
+  cmp -s "$AO_ROOT/overlays/${AO_OVERLAY_PROFILE:-galaxy}/etc/greetd/config.toml" \
+    /etc/greetd/config.toml \
+    && _verify_ok "greetd config matches the selected profile" \
+    || _verify_fail "greetd config drifted from the selected profile"
+  cmp -s "$AO_ROOT/overlays/${AO_OVERLAY_PROFILE:-galaxy}/etc/noctalia-greeter/greeter.toml" \
+    /var/lib/noctalia-greeter/greeter.toml \
+    && _verify_ok "Noctalia Greeter config matches the selected profile" \
+    || _verify_fail "Noctalia Greeter config drifted from the selected profile"
+
+  if [[ ${AO_FINGERPRINT_SUPPORTED:-0} -eq 0 ]]; then
+    pacman -Q libfprint-egismoc-sdcp-git &>/dev/null \
+      && _verify_fail "the Galaxy fingerprint driver is installed on a generic profile"
+    for file in /etc/pam.d/sudo /etc/pam.d/polkit-1; do
+      if [[ -f $file ]] && grep -q 'pam_fprintd\.so' "$file"; then
+        _verify_fail "fingerprint PAM remains on a generic profile: $file"
+      fi
+    done
+  fi
 
   systemctl --user is-enabled --quiet vicinae.service \
     && _verify_ok "Vicinae service is enabled" \
@@ -150,9 +173,11 @@ module_verify() {
     && _verify_ok "the Quickshell polkit agent is running" \
     || _verify_fail "the Quickshell polkit agent is not running"
 
-  fprintd-list "$(id -un)" >/dev/null 2>&1 \
-    && _verify_ok "fingerprint enrollment is present" \
-    || _verify_warn "no enrolled fingerprint was detected"
+  if [[ ${AO_FINGERPRINT_SUPPORTED:-0} -eq 1 ]]; then
+    fprintd-list "$(id -un)" >/dev/null 2>&1 \
+      && _verify_ok "fingerprint enrollment is present" \
+      || _verify_warn "no enrolled fingerprint was detected"
+  fi
 
   pacman -Dk >/dev/null \
     && _verify_ok "pacman database is consistent" \

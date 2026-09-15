@@ -10,5 +10,7 @@
     "desktop": true,
     "verify": true
   },
-  "overlay_profile": "galaxy"
+  "overlay_profile": "galaxy",
+  "desktop_variant": "galaxy",
+  "fingerprint_supported": true
 }

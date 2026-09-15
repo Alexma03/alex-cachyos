@@ -1,0 +1,17 @@
+# Hardware-neutral Noctalia Greeter configuration.
+[session]
+default = "Niri"
+
+[appearance]
+scheme = "Catppuccin"
+theme_mode = "dark"
+corner_radius_scale = 1.4
+font_family = "MesloLGS Nerd Font"
+
+[keyboard]
+layout = "es"
+options = "terminate:ctrl_alt_bksp"
+numlock = true
+
+[auth]
+allow_empty_password = false

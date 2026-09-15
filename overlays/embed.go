@@ -3,7 +3,7 @@ package overlays
 
 import "embed"
 
-// FS contains the galaxy overlay without embedding this adapter.
+// FS contains production host overlays without embedding this adapter.
 //
-//go:embed galaxy
+//go:embed galaxy generic
 var FS embed.FS
